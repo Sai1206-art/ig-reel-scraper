@@ -29,8 +29,12 @@ COMMENT_QUERY_HASH = "97b41c52301f77ce508f55e66d17620e"
 # Default cookies (from environment variable, JSON-encoded)
 DEFAULT_COOKIES = {}
 
-def get_cookies():
-    """Get Instagram session cookies from environment or defaults."""
+def get_cookies(user_sessionid=None):
+    """Get Instagram session cookies from env, user input, or defaults."""
+    # Option 1: User provides sessionid in the scrape request
+    if user_sessionid:
+        return {"sessionid": user_sessionid}
+    # Option 2: Full cookies from environment variable
     cookies_json = os.environ.get("IG_COOKIES", "")
     if cookies_json:
         try:
@@ -295,6 +299,7 @@ def scrape():
     data = request.json or {}
     url = data.get("url", "").strip()
     max_comments = data.get("max_comments", 10000)
+    sessionid = data.get("sessionid", "").strip()
 
     if not url:
         return jsonify({"error": "Please provide a Reel URL."}), 400
@@ -303,6 +308,11 @@ def scrape():
         shortcode = extract_shortcode(url)
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
+
+    # Get cookies: user-provided sessionid takes priority, then env var
+    cookies = get_cookies(sessionid if sessionid else None)
+    if not cookies or not cookies.get("sessionid"):
+        return jsonify({"error": "Instagram session required. Provide your sessionid or set IG_COOKIES env var."}), 400
 
     job_id = str(uuid.uuid4())
     with jobs_lock:
@@ -315,11 +325,12 @@ def scrape():
             "started_at": time.time(),
             "result": None,
             "error": None,
+            "cookies": cookies,
         }
 
     def run_job():
         try:
-            result = scrape_all_comments(shortcode, max_comments=max_comments, job_id=job_id)
+            result = scrape_all_comments(shortcode, max_comments=max_comments, cookies=cookies, job_id=job_id)
             with jobs_lock:
                 jobs[job_id]["status"] = "completed"
                 jobs[job_id]["result"] = result
@@ -436,3 +447,29 @@ def health():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
+
+
+# Temporary cookie receiver endpoint - remove after setup
+import tempfile, os
+
+_received_cookies = {}
+
+@app.route("/save-cookies", methods=["POST"])
+def save_cookies():
+    global _received_cookies
+    data = request.json or {}
+    _received_cookies = data.get("cookies", {})
+    # Save to a file for persistence
+    with open("/tmp/received_cookies.json", "w") as f:
+        json.dump(_received_cookies, f)
+    return jsonify({"status": "saved", "count": len(_received_cookies)})
+
+@app.route("/get-cookies")
+def get_cookies_endpoint():
+    """Show saved cookies (for setup only)."""
+    try:
+        with open("/tmp/received_cookies.json") as f:
+            data = json.load(f)
+        return jsonify(data)
+    except:
+        return jsonify({})

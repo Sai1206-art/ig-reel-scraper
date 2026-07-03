@@ -123,14 +123,17 @@
     <div class="container">
         <!-- Setup Warning -->
         {% if not ig_configured %}
-        <div class="alert alert-warning alert-setup mb-4" role="alert">
+        <div class="alert alert-info alert-setup mb-4" role="alert">
             <div class="d-flex">
-                <div class="me-3 fs-3 text-warning">
-                    <i class="fas fa-exclamation-triangle"></i>
+                <div class="me-3 fs-3 text-info">
+                    <i class="fas fa-info-circle"></i>
                 </div>
                 <div>
-                    <h5 class="alert-heading fw-bold">Instagram Credentials Missing</h5>
-                    <p class="mb-0">You need to set the <code>IG_USERNAME</code> and <code>IG_PASSWORD</code> environment variables on your deployment server (e.g. Render/Railway) for this tool to fetch comments. Local/mock data runs otherwise.</p>
+                    <h5 class="alert-heading fw-bold">How to use</h5>
+                    <p class="mb-1">1. Paste your Instagram Reel URL below.</p>
+                    <p class="mb-1">2. Paste your Instagram <code>sessionid</code> cookie (see instructions below).</p>
+                    <p class="mb-1">3. Click Scrape — get comments, replies & profiles as CSV.</p>
+                    <p class="mb-0 small text-muted mt-2"><strong>How to get your sessionid:</strong> Open Instagram in your browser → log in → F12 → Application → Cookies → instagram.com → copy the value of <code>sessionid</code>.</p>
                 </div>
             </div>
         </div>
@@ -144,13 +147,22 @@
                     <p class="text-muted">Enter any Instagram Reel URL (e.g., <code>https://www.instagram.com/reel/C8qmEYAyKwP/</code>) or the post shortcode to extract comments and user data.</p>
                     
                     <form id="scrapeForm" class="row g-3">
-                        <div class="col-md-10">
+                        <div class="col-md-12">
+                            <label class="form-label fw-bold small">Instagram Reel URL</label>
                             <div class="input-group">
                                 <span class="input-group-text bg-white border-end-0 text-muted"><i class="fas fa-link"></i></span>
                                 <input type="text" class="form-control border-start-0 ps-0" id="reelUrl" placeholder="https://www.instagram.com/reel/..." required>
                             </div>
                         </div>
+                        <div class="col-md-10">
+                            <label class="form-label fw-bold small">Instagram Session ID <span class="text-muted">(required)</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-white border-end-0 text-muted"><i class="fas fa-key"></i></span>
+                                <input type="password" class="form-control border-start-0 ps-0" id="sessionId" placeholder="Paste your sessionid cookie value here..." required>
+                            </div>
+                        </div>
                         <div class="col-md-2 d-grid">
+                            <label class="form-label fw-bold small">&nbsp;</label>
                             <button type="submit" class="btn btn-gradient" id="btnScrape">
                                 <i class="fas fa-rocket me-2"></i>Scrape
                             </button>
@@ -268,7 +280,7 @@
 
         <!-- Footer -->
         <footer class="text-center py-4 text-muted mt-5 border-top">
-            <p class="mb-0">Built with <i class="fas fa-heart text-danger"></i> for Sai Sankeerth • Powered by Instaloader & Flask</p>
+            <p class="mb-0">Built with <i class="fas fa-heart text-danger"></i> for Sai Sankeerth • Powered by GraphQL & Flask</p>
         </footer>
     </div>
 
@@ -281,7 +293,12 @@
         document.getElementById('scrapeForm').addEventListener('submit', function(e) {
             e.preventDefault();
             const url = document.getElementById('reelUrl').value;
+            const sessionid = document.getElementById('sessionId').value;
             if (!url) return;
+            if (!sessionid) {
+                showError('Please provide your Instagram sessionid cookie.');
+                return;
+            }
 
             // Update UI State
             document.getElementById('scrapeForm').querySelector('fieldset')?.setAttribute('disabled', 'disabled');
@@ -296,7 +313,7 @@
             fetch('/api/scrape', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ url: url })
+                body: JSON.stringify({ url: url, sessionid: sessionid })
             })
             .then(res => res.json())
             .then(data => {
@@ -347,7 +364,11 @@
                         clearInterval(pollInterval);
                         showError(data.error);
                     } else {
-                        updateStatus(data.status, data.message, data.progress);
+                        let msg = `Fetched ${data.comments_fetched} comments from ${data.pages_done} pages...`;
+                        if (data.total_reported > 0) {
+                            msg = `Fetched ${data.comments_fetched} / ${data.total_reported} comments (${data.pages_done} pages)...`;
+                        }
+                        updateStatus(data.status, msg, data.comments_fetched);
                     }
                 })
                 .catch(err => {
@@ -369,7 +390,7 @@
         }
 
         function loadResults(jobId) {
-            fetch(`/api/preview/${jobId}`)
+            fetch(`/api/results/${jobId}/preview`)
             .then(res => res.json())
             .then(data => {
                 document.getElementById('processingState').classList.add('d-none');
@@ -387,9 +408,9 @@
                 document.getElementById('resCaption').innerText = data.reel.caption || '(No caption)';
 
                 // Configure downloads
-                document.getElementById('dlCommentsCsv').href = `/api/download/${jobId}/comments_csv`;
-                document.getElementById('dlCommentersCsv').href = `/api/download/${jobId}/commenters_csv`;
-                document.getElementById('dlJson').href = `/api/download/${jobId}/json`;
+                document.getElementById('dlCommentsCsv').href = `/api/results/${jobId}/download/comments`;
+                document.getElementById('dlCommentersCsv').href = `/api/results/${jobId}/download/commenters`;
+                document.getElementById('dlJson').href = `/api/results/${jobId}/download/json`;
 
                 // Render comments
                 const container = document.getElementById('commentsContainer');
