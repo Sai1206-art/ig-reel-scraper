@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Instagram Reel Comment Scraper</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            background-color: #fafafa;
+            color: #262626;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+        .navbar {
+            background-color: #ffffff;
+            border-bottom: 1px solid #dbdbdb;
+        }
+        .navbar-brand {
+            font-weight: 700;
+            background: -webkit-linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .card {
+            border: 1px solid #dbdbdb;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            background-color: #ffffff;
+        }
+        .btn-gradient {
+            background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+            color: white;
+            border: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .btn-gradient:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+            color: white;
+        }
+        .btn-gradient:disabled {
+            background: #cccccc;
+            opacity: 0.7;
+            transform: none;
+        }
+        .badge-verified {
+            color: #0095f6;
+            font-size: 0.85em;
+        }
+        .comment-item {
+            border-bottom: 1px solid #f0f0f0;
+            padding: 12px 0;
+        }
+        .comment-item:last-child {
+            border-bottom: none;
+        }
+        .comment-reply {
+            border-left: 2px solid #dbdbdb;
+            padding-left: 15px;
+            margin-top: 10px;
+            margin-left: 20px;
+            font-size: 0.95em;
+        }
+        .stats-box {
+            border: 1px solid #dbdbdb;
+            border-radius: 6px;
+            padding: 15px;
+            text-align: center;
+            background-color: #fcfcfc;
+            height: 100%;
+        }
+        .stats-num {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #cc2366;
+        }
+        .stats-label {
+            font-size: 0.85rem;
+            color: #8e8e8e;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .spinner-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+        }
+        .progress-bar-custom {
+            height: 8px;
+            border-radius: 4px;
+            background: linear-gradient(45deg, #f09433, #dc2743, #bc1888);
+            width: 0%;
+            transition: width 0.4s ease;
+        }
+        .progress-container {
+            width: 100%;
+            background-color: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+            height: 8px;
+            margin-top: 15px;
+        }
+        .alert-setup {
+            border-left: 4px solid #ffc107;
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar navbar-expand-lg sticky-top mb-4">
+        <div class="container">
+            <a class="navbar-brand fs-4" href="#"><i class="fab fa-instagram me-2"></i>Reel Scraper</a>
+            <span class="navbar-text">
+                <span class="badge bg-dark">v1.0</span>
+            </span>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- Setup Warning -->
+        {% if not ig_configured %}
+        <div class="alert alert-warning alert-setup mb-4" role="alert">
+            <div class="d-flex">
+                <div class="me-3 fs-3 text-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div>
+                    <h5 class="alert-heading fw-bold">Instagram Credentials Missing</h5>
+                    <p class="mb-0">You need to set the <code>IG_USERNAME</code> and <code>IG_PASSWORD</code> environment variables on your deployment server (e.g. Render/Railway) for this tool to fetch comments. Local/mock data runs otherwise.</p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="row">
+            <!-- Scraper Input Form -->
+            <div class="col-lg-12 mb-4">
+                <div class="card p-4">
+                    <h4 class="fw-bold mb-3"><i class="fas fa-search me-2 text-danger"></i>Scrape Reel Comments</h4>
+                    <p class="text-muted">Enter any Instagram Reel URL (e.g., <code>https://www.instagram.com/reel/C8qmEYAyKwP/</code>) or the post shortcode to extract comments and user data.</p>
+                    
+                    <form id="scrapeForm" class="row g-3">
+                        <div class="col-md-10">
+                            <div class="input-group">
+                                <span class="input-group-text bg-white border-end-0 text-muted"><i class="fas fa-link"></i></span>
+                                <input type="text" class="form-control border-start-0 ps-0" id="reelUrl" placeholder="https://www.instagram.com/reel/..." required>
+                            </div>
+                        </div>
+                        <div class="col-md-2 d-grid">
+                            <button type="submit" class="btn btn-gradient" id="btnScrape">
+                                <i class="fas fa-rocket me-2"></i>Scrape
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Processing State (hidden by default) -->
+        <div class="row d-none" id="processingState">
+            <div class="col-12 mb-4">
+                <div class="card p-4">
+                    <div class="spinner-container">
+                        <div class="spinner-border text-danger mb-3" style="width: 3rem; height: 3rem;" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <h4 class="fw-bold" id="statusHeader">Scraping Comments</h4>
+                        <p class="text-muted text-center" id="statusMessage">Submitting job to server...</p>
+                        <div class="progress-container col-md-6">
+                            <div class="progress-bar-custom" id="progressBar"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Error State (hidden by default) -->
+        <div class="row d-none" id="errorState">
+            <div class="col-12 mb-4">
+                <div class="card p-4 border-danger">
+                    <div class="d-flex align-items-center text-danger mb-3">
+                        <i class="fas fa-times-circle fs-3 me-3"></i>
+                        <h4 class="fw-bold mb-0">Scrape Failed</h4>
+                    </div>
+                    <div class="alert alert-danger" id="errorDetails">
+                        Something went wrong during comment extraction.
+                    </div>
+                    <div>
+                        <button class="btn btn-outline-danger" onclick="resetForm()"><i class="fas fa-arrow-left me-2"></i>Try Another Reel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Success Results (hidden by default) -->
+        <div class="row d-none" id="resultsState">
+            <!-- Left Side: Downloads and Stats -->
+            <div class="col-lg-4 mb-4">
+                <div class="card p-4 h-100 d-flex flex-column justify-content-between">
+                    <div>
+                        <h4 class="fw-bold mb-4"><i class="fas fa-check-circle text-success me-2"></i>Results Ready</h4>
+                        
+                        <!-- Mini Reel Summary -->
+                        <div class="mb-4 pb-4 border-bottom">
+                            <div class="d-flex align-items-center mb-3">
+                                <div class="bg-dark text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; font-weight: 600;" id="reelOwnerInitial">U</div>
+                                <div class="ms-3">
+                                    <h6 class="fw-bold mb-0" id="resOwner">@username</h6>
+                                    <small class="text-muted">Reel Owner</small>
+                                </div>
+                            </div>
+                            <p class="text-muted mb-0 small" style="display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;" id="resCaption">Reel caption goes here...</p>
+                        </div>
+
+                        <!-- Mini Stats Grid -->
+                        <div class="row g-2 mb-4">
+                            <div class="col-6">
+                                <div class="stats-box">
+                                    <div class="stats-num" id="statComments">0</div>
+                                    <div class="stats-label">Comments</div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="stats-box">
+                                    <div class="stats-num" id="statReplies">0</div>
+                                    <div class="stats-label">Replies</div>
+                                </div>
+                            </div>
+                            <div class="col-12 mt-2">
+                                <div class="stats-box">
+                                    <div class="stats-num" id="statProfiles">0</div>
+                                    <div class="stats-label">Unique Commenters</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Downloads Section -->
+                    <div class="d-grid gap-2">
+                        <h6 class="fw-bold mb-2 text-muted uppercase small"><i class="fas fa-download me-2"></i>Export Scraped Data</h6>
+                        <a href="#" id="dlCommentsCsv" class="btn btn-outline-dark text-start"><i class="fas fa-file-csv text-success me-3"></i>Comments & Replies CSV</a>
+                        <a href="#" id="dlCommentersCsv" class="btn btn-outline-dark text-start"><i class="fas fa-file-csv text-info me-3"></i>Deduplicated User Profiles CSV</a>
+                        <a href="#" id="dlJson" class="btn btn-outline-dark text-start"><i class="fas fa-file-code text-danger me-3"></i>Complete Raw JSON Data</a>
+                        <hr>
+                        <button class="btn btn-secondary mt-2" onclick="resetForm()"><i class="fas fa-plus me-2"></i>Scrape Another Reel</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Side: Live Comments Preview -->
+            <div class="col-lg-8 mb-4">
+                <div class="card p-4 h-100">
+                    <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
+                        <h4 class="fw-bold mb-0"><i class="far fa-comments me-2 text-danger"></i>Comments Preview (Top 50)</h4>
+                        <span class="badge bg-danger rounded-pill" id="badgeCommentsCount">0 comments</span>
+                    </div>
+
+                    <div style="max-height: 600px; overflow-y: auto; padding-right: 10px;" id="commentsContainer">
+                        <!-- Comment template loaded via JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="text-center py-4 text-muted mt-5 border-top">
+            <p class="mb-0">Built with <i class="fas fa-heart text-danger"></i> for Sai Sankeerth • Powered by Instaloader & Flask</p>
+        </footer>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let pollInterval = null;
+        let currentJobId = null;
+
+        document.getElementById('scrapeForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const url = document.getElementById('reelUrl').value;
+            if (!url) return;
+
+            // Update UI State
+            document.getElementById('scrapeForm').querySelector('fieldset')?.setAttribute('disabled', 'disabled');
+            document.getElementById('btnScrape').disabled = true;
+            document.getElementById('processingState').classList.remove('d-none');
+            document.getElementById('errorState').classList.add('d-none');
+            document.getElementById('resultsState').classList.add('d-none');
+            
+            updateStatus('queued', 'Submitting scraping job...', 0);
+
+            // POST to scrape endpoint
+            fetch('/api/scrape', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url: url })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.error) {
+                    showError(data.error);
+                } else {
+                    currentJobId = data.job_id;
+                    startPolling(data.job_id);
+                }
+            })
+            .catch(err => {
+                showError('Could not contact backend server. Please check your network connection.');
+            });
+        });
+
+        function updateStatus(status, message, progress) {
+            const heading = document.getElementById('statusHeader');
+            const msg = document.getElementById('statusMessage');
+            const bar = document.getElementById('progressBar');
+
+            msg.innerText = message;
+            
+            if (status === 'queued') {
+                heading.innerText = 'Scraping Queued...';
+                bar.style.width = '10%';
+            } else if (status === 'running') {
+                heading.innerText = 'Scraping in Progress...';
+                // Estimate progress based on count or default pacing
+                let pct = 20 + Math.min(60, progress * 0.5);
+                bar.style.width = pct + '%';
+            }
+        }
+
+        function startPolling(jobId) {
+            if (pollInterval) clearInterval(pollInterval);
+            
+            pollInterval = setInterval(() => {
+                fetch(`/api/status/${jobId}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.error) {
+                        clearInterval(pollInterval);
+                        showError(data.error);
+                    } else if (data.status === 'completed') {
+                        clearInterval(pollInterval);
+                        loadResults(jobId);
+                    } else if (data.status === 'error') {
+                        clearInterval(pollInterval);
+                        showError(data.error);
+                    } else {
+                        updateStatus(data.status, data.message, data.progress);
+                    }
+                })
+                .catch(err => {
+                    console.error('Polling error:', err);
+                });
+            }, 2000);
+        }
+
+        function showError(errText) {
+            document.getElementById('processingState').classList.add('d-none');
+            document.getElementById('resultsState').classList.add('d-none');
+            
+            const errDiv = document.getElementById('errorDetails');
+            errDiv.innerText = errText;
+            document.getElementById('errorState').classList.remove('d-none');
+            
+            // Re-enable input button
+            document.getElementById('btnScrape').disabled = false;
+        }
+
+        function loadResults(jobId) {
+            fetch(`/api/preview/${jobId}`)
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('processingState').classList.add('d-none');
+                
+                // Set stats
+                document.getElementById('statComments').innerText = Number(data.total_comments).toLocaleString();
+                document.getElementById('statReplies').innerText = Number(data.total_replies).toLocaleString();
+                document.getElementById('statProfiles').innerText = Number(data.unique_commenters).toLocaleString();
+                document.getElementById('badgeCommentsCount').innerText = `${Number(data.total_comments).toLocaleString()} comments`;
+
+                // Set metadata
+                const username = data.reel.owner.username || 'N/A';
+                document.getElementById('resOwner').innerText = `@${username}`;
+                document.getElementById('reelOwnerInitial').innerText = username.charAt(0).toUpperCase();
+                document.getElementById('resCaption').innerText = data.reel.caption || '(No caption)';
+
+                // Configure downloads
+                document.getElementById('dlCommentsCsv').href = `/api/download/${jobId}/comments_csv`;
+                document.getElementById('dlCommentersCsv').href = `/api/download/${jobId}/commenters_csv`;
+                document.getElementById('dlJson').href = `/api/download/${jobId}/json`;
+
+                // Render comments
+                const container = document.getElementById('commentsContainer');
+                container.innerHTML = '';
+                
+                if (data.comments_preview.length === 0) {
+                    container.innerHTML = '<div class="text-center py-5 text-muted">No comments found on this reel.</div>';
+                } else {
+                    data.comments_preview.forEach(c => {
+                        const div = document.createElement('div');
+                        div.className = 'comment-item';
+                        
+                        let badgeHtml = c.verified ? ' <i class="fas fa-check-circle badge-verified"></i>' : '';
+                        let repliesHtml = '';
+                        
+                        if (c.replies && c.replies.length > 0) {
+                            c.replies.forEach(r => {
+                                repliesHtml += `
+                                    <div class="comment-reply">
+                                        <div class="d-flex align-items-center mb-1">
+                                            <a href="https://www.instagram.com/${r.username}/" target="_blank" class="fw-bold text-decoration-none text-dark small">@${r.username}</a>
+                                        </div>
+                                        <div class="comment-text text-muted">${escapeHtml(r.text)}</div>
+                                        <div class="mt-1"><small class="text-muted"><i class="far fa-heart"></i> ${r.likes} likes</small></div>
+                                    </div>
+                                `;
+                            });
+                        }
+
+                        div.innerHTML = `
+                            <div class="d-flex justify-content-between">
+                                <div class="d-flex align-items-center mb-1">
+                                    <a href="${c.profile_url}" target="_blank" class="fw-bold text-decoration-none text-dark">@${c.username}</a>
+                                    ${badgeHtml}
+                                </div>
+                                <span class="badge bg-light text-muted border"><i class="far fa-heart text-danger me-1"></i> ${c.likes}</span>
+                            </div>
+                            <div class="comment-text my-2 text-secondary">${escapeHtml(c.text)}</div>
+                            <div class="d-flex align-items-center text-muted small gap-3">
+                                <span><i class="far fa-clock me-1"></i> ${formatDate(c.created_at)}</span>
+                                ${c.reply_count > 0 ? `<span><i class="far fa-comment-dots me-1"></i> ${c.reply_count} replies</span>` : ''}
+                            </div>
+                            ${repliesHtml}
+                        `;
+                        container.appendChild(div);
+                    });
+
+                    if (data.has_more) {
+                        const moreDiv = document.createElement('div');
+                        moreDiv.className = 'text-center py-3 text-muted border-top mt-3 small';
+                        moreDiv.innerText = `... and ${(data.total_comments - 50).toLocaleString()} more. Open the CSV files to view the complete list!`;
+                        container.appendChild(moreDiv);
+                    }
+                }
+
+                document.getElementById('resultsState').classList.remove('d-none');
+            })
+            .catch(err => {
+                showError('Error displaying results preview: ' + err.message);
+            });
+        }
+
+        function resetForm() {
+            document.getElementById('scrapeForm').reset();
+            document.getElementById('btnScrape').disabled = false;
+            document.getElementById('errorState').classList.add('d-none');
+            document.getElementById('resultsState').classList.add('d-none');
+            document.getElementById('processingState').classList.add('d-none');
+            currentJobId = null;
+        }
+
+        function formatDate(isoStr) {
+            if (!isoStr) return '';
+            try {
+                const date = new Date(isoStr);
+                return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            } catch (e) {
+                return isoStr;
+            }
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>
