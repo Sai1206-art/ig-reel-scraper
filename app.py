@@ -1,5 +1,5 @@
 """
-Instagram Reel Comment Scraper - Web App
+Instagram Reel Comment Scraper - Web App (v2 - Synchronous mode)
 Uses Instagram's GraphQL API with session cookies to scrape comments.
 No instaloader dependency — just requests + Flask.
 """
@@ -10,7 +10,6 @@ import re
 import csv
 import time
 import uuid
-import threading
 import traceback
 from datetime import datetime, timezone
 from flask import Flask, render_template, request, jsonify, send_file, Response
@@ -19,9 +18,9 @@ import requests
 
 app = Flask(__name__)
 
-# --- Global state for background scraping jobs ---
+# --- Global state for background scraping jobs (kept for compat) ---
 jobs = {}
-jobs_lock = threading.Lock()
+jobs_lock = __import__("threading").Lock()
 
 # Instagram GraphQL query hash for comments
 COMMENT_QUERY_HASH = "97b41c52301f77ce508f55e66d17620e"
@@ -31,10 +30,8 @@ DEFAULT_COOKIES = {}
 
 def get_cookies(user_sessionid=None):
     """Get Instagram session cookies from env, user input, or defaults."""
-    # Option 1: User provides sessionid in the scrape request
     if user_sessionid:
         return {"sessionid": user_sessionid}
-    # Option 2: Full cookies from environment variable
     cookies_json = os.environ.get("IG_COOKIES", "")
     if cookies_json:
         try:
@@ -47,11 +44,9 @@ def get_cookies(user_sessionid=None):
 def extract_shortcode(url):
     """Extract shortcode from Instagram reel URL."""
     url = url.strip()
-    # Match /reel/SHORTCODE/ or /reels/SHORTCODE/
     match = re.search(r'/reels?/([A-Za-z0-9_-]+)', url)
     if match:
         return match.group(1)
-    # If it's just a shortcode
     if re.match(r'^[A-Za-z0-9_-]{5,20}$', url):
         return url
     raise ValueError("Could not extract shortcode from URL")
@@ -185,18 +180,16 @@ def scrape_all_comments(shortcode, max_comments=10000, cookies=None, job_id=None
             comment = parse_comment_node(node, len(all_comments) + 1)
             all_comments.append(comment)
 
-            # Track unique commenters
             c = comment["commenter"]
             if c["user_id"] and c["user_id"] not in all_commenters:
                 all_commenters[c["user_id"]] = c
 
-            # Track commenters from replies
             for r in comment.get("replies", []):
                 rc = r["commenter"]
                 if rc["user_id"] and rc["user_id"] not in all_commenters:
                     all_commenters[rc["user_id"]] = rc
 
-        # Update job progress
+        # Update job progress if running in background mode
         if job_id:
             with jobs_lock:
                 if job_id in jobs:
@@ -210,10 +203,8 @@ def scrape_all_comments(shortcode, max_comments=10000, cookies=None, job_id=None
         end_cursor = page_info.get("end_cursor")
         page += 1
 
-        # Be nice to Instagram
         time.sleep(1.5)
 
-    # Count replies
     total_replies = sum(len(c.get("replies", [])) for c in all_comments)
 
     return {
@@ -286,7 +277,10 @@ def generate_commenters_csv(result):
     return output.getvalue()
 
 
-# --- Routes ---
+# --- Synchronous scrape result storage (in-memory, per request) ---
+# We store results keyed by a short ID so the download endpoints work
+_results_store = {}
+
 
 @app.route("/")
 def index():
@@ -295,10 +289,10 @@ def index():
 
 @app.route("/api/scrape", methods=["POST"])
 def scrape():
-    """Start a scraping job."""
+    """Scrape comments synchronously and return results directly."""
     data = request.json or {}
     url = data.get("url", "").strip()
-    max_comments = data.get("max_comments", 10000)
+    max_comments = data.get("max_comments", 500)
     sessionid = data.get("sessionid", "").strip()
 
     if not url:
@@ -309,68 +303,21 @@ def scrape():
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
 
-    # Get cookies: user-provided sessionid takes priority, then env var
     cookies = get_cookies(sessionid if sessionid else None)
     if not cookies or not cookies.get("sessionid"):
-        return jsonify({"error": "Instagram session required. Provide your sessionid or set IG_COOKIES env var."}), 400
+        return jsonify({"error": "Instagram session required. Provide your sessionid cookie."}), 400
 
-    job_id = str(uuid.uuid4())
-    with jobs_lock:
-        jobs[job_id] = {
-            "shortcode": shortcode,
-            "status": "running",
-            "comments_fetched": 0,
-            "total_reported": 0,
-            "pages_done": 0,
-            "started_at": time.time(),
-            "result": None,
-            "error": None,
-            "cookies": cookies,
-        }
+    try:
+        result = scrape_all_comments(shortcode, max_comments=max_comments, cookies=cookies)
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
 
-    def run_job():
-        try:
-            result = scrape_all_comments(shortcode, max_comments=max_comments, cookies=cookies, job_id=job_id)
-            with jobs_lock:
-                jobs[job_id]["status"] = "completed"
-                jobs[job_id]["result"] = result
-        except Exception as e:
-            with jobs_lock:
-                jobs[job_id]["status"] = "error"
-                jobs[job_id]["error"] = str(e)
+    # Store result for download endpoints
+    result_id = str(uuid.uuid4())[:8]
+    _results_store[result_id] = result
 
-    thread = threading.Thread(target=run_job, daemon=True)
-    thread.start()
-
-    return jsonify({"job_id": job_id, "shortcode": shortcode})
-
-
-@app.route("/api/status/<job_id>")
-def status(job_id):
-    """Check job status."""
-    with jobs_lock:
-        job = jobs.get(job_id)
-    if not job:
-        return jsonify({"error": "Job not found"}), 404
-
-    return jsonify({
-        "status": job["status"],
-        "comments_fetched": job["comments_fetched"],
-        "total_reported": job["total_reported"],
-        "pages_done": job["pages_done"],
-        "error": job["error"],
-    })
-
-
-@app.route("/api/results/<job_id>/preview")
-def results_preview(job_id):
-    """Get a preview of scrape results."""
-    with jobs_lock:
-        job = jobs.get(job_id)
-    if not job or job["status"] != "completed":
-        return jsonify({"error": "Results not ready"}), 400
-
-    result = job["result"]
+    # Build preview
     preview_comments = []
     for c in result["comments"][:50]:
         preview_comments.append({
@@ -394,24 +341,26 @@ def results_preview(job_id):
         })
 
     return jsonify({
-        "reel": result["reel"],
+        "result_id": result_id,
+        "shortcode": shortcode,
         "total_comments": result["comment_count"],
         "total_replies": result["reply_count"],
+        "total_reported": result["total_reported"],
         "unique_commenters": len(result["unique_commenters"]),
+        "pages_fetched": result["pages_fetched"],
+        "errors": result.get("errors", []),
         "comments_preview": preview_comments,
         "has_more": result["comment_count"] > 50,
     })
 
 
-@app.route("/api/results/<job_id>/download/<filetype>")
-def download(job_id, filetype):
-    """Download results as CSV."""
-    with jobs_lock:
-        job = jobs.get(job_id)
-    if not job or job["status"] != "completed":
-        return jsonify({"error": "Results not ready"}), 400
+@app.route("/api/results/<result_id>/download/<filetype>")
+def download(result_id, filetype):
+    """Download results as CSV or JSON."""
+    result = _results_store.get(result_id)
+    if not result:
+        return jsonify({"error": "Results expired. Please scrape again."}), 404
 
-    result = job["result"]
     shortcode = result["reel"]
 
     if filetype == "comments":
@@ -447,29 +396,3 @@ def health():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
-
-
-# Temporary cookie receiver endpoint - remove after setup
-import tempfile, os
-
-_received_cookies = {}
-
-@app.route("/save-cookies", methods=["POST"])
-def save_cookies():
-    global _received_cookies
-    data = request.json or {}
-    _received_cookies = data.get("cookies", {})
-    # Save to a file for persistence
-    with open("/tmp/received_cookies.json", "w") as f:
-        json.dump(_received_cookies, f)
-    return jsonify({"status": "saved", "count": len(_received_cookies)})
-
-@app.route("/get-cookies")
-def get_cookies_endpoint():
-    """Show saved cookies (for setup only)."""
-    try:
-        with open("/tmp/received_cookies.json") as f:
-            data = json.load(f)
-        return jsonify(data)
-    except:
-        return jsonify({})
