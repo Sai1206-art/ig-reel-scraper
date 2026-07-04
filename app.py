@@ -249,73 +249,171 @@ def extract_hashtag_candidates(text):
     return candidates
 
 
-def fetch_hashtag_media_graphql(tag_name, cookies, first=50):
-    """Fetch hashtag top posts + recent media via GraphQL, return video/reel items only."""
-    variables = {"tag_name": tag_name, "first": first}
-    url = f"https://www.instagram.com/graphql/query/?query_hash={HASHTAG_QUERY_HASH}"
-    params = {
-        "query_hash": HASHTAG_QUERY_HASH,
-        "variables": json.dumps(variables),
+def _parse_media_node_gql(node):
+    """Parse a GraphQL media node into a reel dict."""
+    shortcode = node.get("shortcode") or node.get("code", "")
+    if not shortcode:
+        return None
+    caption_edges = node.get("edge_media_to_caption", {}).get("edges", [])
+    caption_text = caption_edges[0]["node"]["text"] if caption_edges else ""
+    owner = node.get("owner", {})
+    taken_ts = node.get("taken_at_timestamp") or node.get("taken_at", 0)
+
+    return {
+        "shortcode": shortcode,
+        "caption": caption_text[:400],
+        "username": owner.get("username", ""),
+        "full_name": owner.get("full_name", ""),
+        "profile_pic_url": owner.get("profile_pic_url", ""),
+        "like_count": (node.get("edge_liked_by") or {}).get("count", node.get("like_count", 0)),
+        "comment_count": (node.get("edge_media_to_comment") or {}).get("count", node.get("comment_count", 0)),
+        "play_count": node.get("video_view_count", node.get("play_count", 0)),
+        "taken_at": taken_ts,
+        "taken_at_iso": datetime.fromtimestamp(taken_ts, tz=timezone.utc).isoformat() if taken_ts else "",
+        "thumbnail_url": node.get("display_url") or node.get("thumbnail_src", ""),
+        "reel_url": f"https://www.instagram.com/reel/{shortcode}/",
     }
-    headers = {**IG_HEADERS, "Referer": f"https://www.instagram.com/explore/tags/{tag_name}/"}
 
-    try:
-        resp = requests.get(url, params=params, cookies=cookies, headers=headers, timeout=20)
-    except Exception:
-        return []
 
-    if resp.status_code != 200:
-        return []
-
-    try:
-        data = resp.json()
-    except Exception:
-        return []
-
-    hashtag = (data.get("data") or {}).get("hashtag")
-    if not hashtag:
-        return []
-
+def fetch_hashtag_media(tag_name, cookies, first=50):
+    """Fetch hashtag media using multiple strategies. Returns list of reel dicts."""
+    tag = tag_name.lstrip("#").lower().strip()
     reels = []
     seen = set()
 
-    # Collect from top posts AND recent media
-    for edge_key in ("edge_hashtag_to_top_posts", "edge_hashtag_to_media"):
-        edges = hashtag.get(edge_key, {}).get("edges", [])
-        for edge in edges:
-            node = edge.get("node", {})
-            shortcode = node.get("shortcode", "")
-            if not shortcode or shortcode in seen:
-                continue
+    def add_reel(r):
+        if r and r["shortcode"] not in seen:
+            r["hashtag"] = tag
+            seen.add(r["shortcode"])
+            reels.append(r)
 
-            # Only include video content (reels)
-            if not node.get("is_video", False):
-                continue
+    headers = {
+        **IG_HEADERS,
+        "Referer": f"https://www.instagram.com/explore/tags/{tag}/",
+        "Accept": "application/json",
+        "Sec-Fetch-Dest": "empty",
+        "Sec-Fetch-Mode": "cors",
+        "Sec-Fetch-Site": "same-origin",
+    }
 
-            seen.add(shortcode)
+    # --- Strategy 1: GraphQL query_hash (legacy, may still work on some accounts) ---
+    try:
+        variables = json.dumps({"tag_name": tag, "first": first})
+        url = f"https://www.instagram.com/graphql/query/?query_hash={HASHTAG_QUERY_HASH}&variables={variables}"
+        resp = requests.get(url, cookies=cookies, headers=headers, timeout=15)
+        if resp.status_code == 200:
+            data = resp.json()
+            hashtag = (data.get("data") or {}).get("hashtag")
+            if hashtag:
+                for edge_key in ("edge_hashtag_to_top_posts", "edge_hashtag_to_media"):
+                    for edge in hashtag.get(edge_key, {}).get("edges", []):
+                        node = edge.get("node", {})
+                        if not node.get("is_video", False):
+                            continue
+                        add_reel(_parse_media_node_gql(node))
+            if reels:
+                return reels
+    except Exception:
+        pass
 
-            caption_edges = node.get("edge_media_to_caption", {}).get("edges", [])
-            caption_text = caption_edges[0]["node"]["text"] if caption_edges else ""
-            owner = node.get("owner", {})
+    # --- Strategy 2: Scrape hashtag page HTML for embedded JSON ---
+    try:
+        resp = requests.get(
+            f"https://www.instagram.com/explore/tags/{tag}/",
+            cookies=cookies, headers={**IG_HEADERS, "Accept": "text/html"}, timeout=15
+        )
+        if resp.status_code == 200 and "<script" in resp.text:
+            # Extract media data from embedded JSON blobs
+            # Pattern: "shortcode":"XXXX" ... "is_video":true
+            import re as _re
+            # Find all media nodes in the page
+            pattern = _re.compile(
+                r'"(shortcode|code)"\s*:\s*"([A-Za-z0-9_-]+)"[^}]*?"is_video"\s*:\s*(true)'
+            )
+            for m in pattern.finditer(resp.text):
+                sc = m.group(2)
+                if sc in seen:
+                    continue
+                # Extract surrounding context for more fields
+                start = max(0, m.start() - 2000)
+                end = min(len(resp.text), m.end() + 2000)
+                chunk = resp.text[start:end]
 
-            taken_ts = node.get("taken_at_timestamp", 0)
-            taken_iso = datetime.fromtimestamp(taken_ts, tz=timezone.utc).isoformat() if taken_ts else ""
+                like_match = _re.search(r'"(?:edge_liked_by|like_count)"\s*:\s*(?:\{[^}]*"count"\s*:\s*(\d+)|"count"?\s*:\s*(\d+)|(\d+))', chunk)
+                comment_match = _re.search(r'"(?:edge_media_to_comment|comment_count)"\s*:\s*(?:\{[^}]*"count"\s*:\s*(\d+)|"count"?\s*:\s*(\d+)|(\d+))', chunk)
+                view_match = _re.search(r'"video_view_count"\s*:\s*(\d+)', chunk)
+                taken_match = _re.search(r'"taken_at_timestamp"\s*:\s*(\d+)', chunk)
+                owner_match = _re.search(r'"owner"\s*:\s*\{[^}]*"username"\s*:\s*"([^"]*)"', chunk)
+                display_match = _re.search(r'"display_url"\s*:\s*"([^"]*)"', chunk)
+                caption_match = _re.search(r'"text"\s*:\s*"([^"]{0,400})"', chunk)
 
-            reels.append({
-                "shortcode": shortcode,
-                "caption": caption_text[:400],
-                "username": owner.get("username", ""),
-                "full_name": owner.get("full_name", ""),
-                "profile_pic_url": owner.get("profile_pic_url", ""),
-                "like_count": node.get("edge_liked_by", {}).get("count", 0),
-                "comment_count": node.get("edge_media_to_comment", {}).get("count", 0),
-                "play_count": node.get("video_view_count", 0),
-                "taken_at": taken_ts,
-                "taken_at_iso": taken_iso,
-                "thumbnail_url": node.get("display_url") or node.get("thumbnail_src", ""),
-                "reel_url": f"https://www.instagram.com/reel/{shortcode}/",
-                "hashtag": tag_name,
-            })
+                r = {
+                    "shortcode": sc,
+                    "caption": caption_match.group(1).encode().decode("unicode_escape")[:400] if caption_match else "",
+                    "username": owner_match.group(1) if owner_match else "",
+                    "full_name": "",
+                    "profile_pic_url": "",
+                    "like_count": int(like_match.group(1) or like_match.group(2) or like_match.group(3) or 0) if like_match else 0,
+                    "comment_count": int(comment_match.group(1) or comment_match.group(2) or comment_match.group(3) or 0) if comment_match else 0,
+                    "play_count": int(view_match.group(1)) if view_match else 0,
+                    "taken_at": int(taken_match.group(1)) if taken_match else 0,
+                    "taken_at_iso": datetime.fromtimestamp(int(taken_match.group(1)), tz=timezone.utc).isoformat() if taken_match else "",
+                    "thumbnail_url": display_match.group(1) if display_match else "",
+                    "reel_url": f"https://www.instagram.com/reel/{sc}/",
+                    "hashtag": tag,
+                }
+                add_reel(r)
+            if reels:
+                return reels
+    except Exception:
+        pass
+
+    # --- Strategy 3: Instagram's /api/v1/tags/ sections endpoint (mobile API) ---
+    try:
+        api_headers = {
+            **IG_HEADERS,
+            "Accept": "application/json",
+            "X-IG-App-ID": "936619743392459",
+            "Referer": f"https://www.instagram.com/explore/tags/{tag}/",
+        }
+        resp = requests.get(
+            f"https://www.instagram.com/api/v1/tags/{tag}/sections/",
+            cookies=cookies, headers=api_headers, timeout=15, allow_redirects=True
+        )
+        if resp.status_code == 200:
+            data = resp.json()
+            for section in data.get("sections", []):
+                lc = section.get("layout_content", {})
+                for media_item in lc.get("medias", []):
+                    m = media_item.get("media", {})
+                    if m.get("media_type") != 2:  # 2 = video/reel
+                        continue
+                    sc = m.get("code") or m.get("shortcode", "")
+                    if not sc or sc in seen:
+                        continue
+                    cap = m.get("caption", {})
+                    caption_text = cap.get("text", "") if isinstance(cap, dict) else str(cap)
+                    owner = m.get("user", {})
+                    taken_ts = m.get("taken_at", 0)
+                    add_reel({
+                        "shortcode": sc,
+                        "caption": caption_text[:400],
+                        "username": owner.get("username", ""),
+                        "full_name": owner.get("full_name", ""),
+                        "profile_pic_url": owner.get("profile_pic_url", ""),
+                        "like_count": m.get("like_count", 0),
+                        "comment_count": m.get("comment_count", 0),
+                        "play_count": m.get("play_count", 0),
+                        "taken_at": taken_ts,
+                        "taken_at_iso": datetime.fromtimestamp(taken_ts, tz=timezone.utc).isoformat() if taken_ts else "",
+                        "thumbnail_url": m.get("thumbnail_url") or m.get("image_versions", {}).get("candidates", [{}])[0].get("url", ""),
+                        "reel_url": f"https://www.instagram.com/reel/{sc}/",
+                        "hashtag": tag,
+                    })
+            if reels:
+                return reels
+    except Exception:
+        pass
 
     return reels
 
@@ -364,7 +462,7 @@ def discover():
     hashtags_used = []
 
     for tag in tags_to_search:
-        reels = fetch_hashtag_media_graphql(tag, cookies)
+        reels = fetch_hashtag_media(tag, cookies)
         if reels:
             hashtags_used.append(tag)
         for r in reels:
