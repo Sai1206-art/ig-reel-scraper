@@ -209,7 +209,7 @@ def scrape_all_comments(shortcode, max_comments=500, cookies=None):
 # ============================================================
 
 def extract_hashtag_candidates(text):
-    """Extract potential hashtag candidates from free text."""
+    """Extract potential hashtag candidates from free text using smart location mapping and keyword dictionaries."""
     text = text.lower().strip()
     words = re.findall(r'[a-z0-9]+', text)
     stop = {
@@ -221,29 +221,87 @@ def extract_hashtag_candidates(text):
         'our', 'their', 'want', 'need', 'find', 'show', 'get', 'looking',
         'me', 'some', 'any', 'all', 'most', 'more', 'less', 'very', 'too',
         'so', 'just', 'only', 'also', 'but', 'not', 'no', 'yes', 'like',
-        'where', 'what', 'when', 'how', 'who', 'which', 'why',
+        'where', 'what', 'when', 'how', 'who', 'which', 'why', 'people', 'talking',
+        'products', 'influencers', 'promoted', 'promoting', 'comment', 'commented',
+        'interest', 'interested'
     }
-    words = [w for w in words if w not in stop and len(w) >= 2]
+    filtered_words = [w for w in words if w not in stop and len(w) >= 2]
+
+    # Detect location words
+    locations = []
+    location_words = {
+        "singapore": ["singapore", "sg"],
+        "sg": ["singapore", "sg"],
+        "bangalore": ["bangalore", "bengaluru", "blr"],
+        "bengaluru": ["bangalore", "bengaluru", "blr"],
+        "mumbai": ["mumbai", "bombay"],
+        "delhi": ["delhi", "ncr"],
+        "dubai": ["dubai", "dxb"],
+        "india": ["india", "ind"],
+        "london": ["london", "uk"],
+        "usa": ["usa", "us", "america"],
+        "ny": ["ny", "nyc", "newyork"],
+        "nyc": ["ny", "nyc", "newyork"],
+        "newyork": ["ny", "nyc", "newyork"],
+    }
+
+    detected_locs = []
+    for loc_key, aliases in location_words.items():
+        if loc_key in text or any(alias in words for alias in aliases):
+            detected_locs.append(loc_key)
+
+    # Dictionary of semantic keyword expansions
+    MAP_KEYWORDS = {
+        "realestate": ["realestate", "realestateinvesting", "property", "realtor", "realestateagent"],
+        "property": ["realestate", "property", "realestateinvesting"],
+        "fitness": ["fitness", "gym", "workout", "fitnessmotivation", "personaltrainer"],
+        "gym": ["gym", "fitness", "workout"],
+        "hydration": ["hydration", "waterbottle", "electrolytes", "activewear", "fitness"],
+        "supplement": ["supplements", "protein", "fitness"],
+        "makeup": ["makeup", "beauty", "cosmetics"],
+        "skin": ["skincare", "beauty"],
+        "finance": ["personalfinance", "investing", "finance"],
+        "crypto": ["crypto", "cryptocurrency", "bitcoin"],
+        "marketing": ["marketing", "digitalmarketing", "businessowner"],
+    }
 
     candidates = []
     seen = set()
 
     def add(w):
-        if w not in seen and 2 <= len(w) <= 30:
+        w = w.strip().replace(" ", "").lower()
+        if w and w not in seen and 2 <= len(w) <= 30:
             seen.add(w)
             candidates.append(w)
 
-    # Most specific first: all words joined
-    if len(words) >= 2:
-        add(''.join(words))
-    # Triples
-    for i in range(len(words) - 2):
-        add(words[i] + words[i + 1] + words[i + 2])
-    # Pairs
-    for i in range(len(words) - 1):
-        add(words[i] + words[i + 1])
-    # Singles
-    for w in words:
+    # 1. If we have locations, cross them with keywords
+    for loc in detected_locs:
+        aliases = location_words[loc]
+        for w in filtered_words:
+            if w in aliases:
+                continue
+            # Try combining
+            for alias in aliases:
+                add(f"{alias}{w}")
+                add(f"{w}{alias}")
+                # Also lookup expansions
+                if w in MAP_KEYWORDS:
+                    for exp in MAP_KEYWORDS[w]:
+                        add(f"{alias}{exp}")
+                        add(f"{exp}{alias}")
+
+    # 2. Add expansions for key words
+    for w in filtered_words:
+        if w in MAP_KEYWORDS:
+            for exp in MAP_KEYWORDS[w]:
+                add(exp)
+
+    # 3. Add pairs of remaining filtered words
+    for i in range(len(filtered_words) - 1):
+        add(f"{filtered_words[i]}{filtered_words[i+1]}")
+
+    # 4. Add the raw filtered words
+    for w in filtered_words:
         add(w)
 
     return candidates
@@ -474,17 +532,72 @@ def discover():
             "message": "No reels found for these hashtags. Try different keywords or check your session ID.",
         })
 
-    # --- Score and rank (mix of likes, comments, recency) ---
+    # --- Score and rank (mix of likes, comments, relevance, strict recency, and deduplication) ---
     max_likes = max((r["like_count"] for r in all_reels), default=1) or 1
     max_comments = max((r["comment_count"] for r in all_reels), default=1) or 1
     now = time.time()
 
+    # Extract clean query terms to check caption relevance
+    query_terms = []
+    if query:
+        query_terms = [w for w in re.findall(r'[a-z0-9]+', query.lower()) if len(w) >= 3 and w not in {
+            'the', 'and', 'for', 'with', 'you', 'this', 'that', 'from', 'about', 'want', 'looking', 'find'
+        }]
+
+    # 1. Deduplicate by creator to prevent single accounts from taking over (allow max 2 per creator)
+    from collections import defaultdict
+    creator_counts = defaultdict(int)
+    deduped_reels = []
+    
+    # Sort them by total engagement first so we keep the absolute best posts of each creator
+    all_reels.sort(key=lambda x: (x.get("comment_count", 0) + x.get("like_count", 0)), reverse=True)
+    
+    for r in all_reels:
+        username = r.get("username", "").strip().lower()
+        if username:
+            if creator_counts[username] < 2:
+                creator_counts[username] += 1
+                deduped_reels.append(r)
+        else:
+            deduped_reels.append(r)
+    all_reels = deduped_reels
+
+    # 2. Score remaining reels
     for r in all_reels:
         likes_norm = math.log10(r["like_count"] + 1) / math.log10(max_likes + 1)
         comments_norm = math.log10(r["comment_count"] + 1) / math.log10(max_comments + 1)
-        days_old = max(0, (now - r["taken_at"]) / 86400) if r["taken_at"] else 365
-        recency = math.exp(-days_old / 60)  # ~60-day half-life
-        r["score"] = round(0.3 * likes_norm + 0.4 * comments_norm + 0.3 * recency, 4)
+        engagement = 0.4 * likes_norm + 0.6 * comments_norm
+
+        # Strictly penalize older posts (reels older than 90 days are heavily degraded for lead gen)
+        days_old = max(0, (now - r["taken_at"]) / 86400) if r["taken_at"] else 90
+        
+        if days_old <= 14:
+            recency_factor = 1.0       # pristine / highly active
+        elif days_old <= 45:
+            recency_factor = 0.85      # recent enough
+        elif days_old <= 90:
+            recency_factor = 0.5       # borderline
+        elif days_old <= 180:
+            recency_factor = 0.15      # stale
+        else:
+            recency_factor = 0.01      # ancient/useless
+
+        # Caption keyword relevance bonus (+0.3 max)
+        caption_lower = (r.get("caption") or "").lower()
+        relevance_bonus = 0.0
+        if query_terms:
+            matched = sum(1 for term in query_terms if term in caption_lower)
+            relevance_bonus = min(0.3, matched * 0.1)
+
+        # Spam penalties (demote posts with no caption or pure links dumps)
+        spam_penalty = 1.0
+        if len(caption_lower) < 10:
+            spam_penalty = 0.5
+        elif "http" in caption_lower or ".com" in caption_lower:
+            spam_penalty = 0.8
+
+        r["score"] = round((engagement + relevance_bonus) * recency_factor * spam_penalty, 4)
+        r["days_old"] = round(days_old, 1)
 
     all_reels.sort(key=lambda x: x["score"], reverse=True)
     top_reels = all_reels[:25]
