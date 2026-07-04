@@ -203,7 +203,7 @@ def scrape_all_comments(shortcode, max_comments=10000, cookies=None, job_id=None
         end_cursor = page_info.get("end_cursor")
         page += 1
 
-        time.sleep(1.5)
+        time.sleep(0.5)
 
     total_replies = sum(len(c.get("replies", [])) for c in all_comments)
 
