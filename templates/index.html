@@ -7,118 +7,38 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        body {
-            background-color: #fafafa;
-            color: #262626;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-        }
-        .navbar {
-            background-color: #ffffff;
-            border-bottom: 1px solid #dbdbdb;
-        }
-        .navbar-brand {
-            font-weight: 700;
-            background: -webkit-linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        .card {
-            border: 1px solid #dbdbdb;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-            background-color: #ffffff;
-        }
-        .btn-gradient {
-            background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
-            color: white;
-            border: none;
-            font-weight: 600;
-            transition: all 0.3s ease;
-        }
-        .btn-gradient:hover {
-            opacity: 0.9;
-            transform: translateY(-1px);
-            color: white;
-        }
-        .btn-gradient:disabled {
-            background: #cccccc;
-            opacity: 0.7;
-            transform: none;
-        }
-        .badge-verified {
-            color: #0095f6;
-            font-size: 0.85em;
-        }
-        .comment-item {
-            border-bottom: 1px solid #f0f0f0;
-            padding: 12px 0;
-        }
-        .comment-item:last-child {
-            border-bottom: none;
-        }
-        .comment-reply {
-            border-left: 2px solid #dbdbdb;
-            padding-left: 15px;
-            margin-top: 10px;
-            margin-left: 20px;
-            font-size: 0.95em;
-        }
-        .stats-box {
-            border: 1px solid #dbdbdb;
-            border-radius: 6px;
-            padding: 15px;
-            text-align: center;
-            background-color: #fcfcfc;
-            height: 100%;
-        }
-        .stats-num {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: #cc2366;
-        }
-        .stats-label {
-            font-size: 0.85rem;
-            color: #8e8e8e;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        .spinner-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 40px 20px;
-        }
-        .progress-bar-custom {
-            height: 8px;
-            border-radius: 4px;
-            background: linear-gradient(45deg, #f09433, #dc2743, #bc1888);
-            width: 0%;
-            transition: width 0.4s ease;
-        }
-        .progress-container {
-            width: 100%;
-            background-color: #e9ecef;
-            border-radius: 4px;
-            overflow: hidden;
-            height: 8px;
-            margin-top: 15px;
-        }
-        .alert-setup {
-            border-left: 4px solid #0d6efd;
-        }
-        .pulse-dot {
-            display: inline-block;
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            background: #dc2743;
-            animation: pulse 1.5s infinite;
-        }
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.3; }
-        }
+        body { background-color: #fafafa; color: #262626; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        .navbar { background-color: #ffffff; border-bottom: 1px solid #dbdbdb; }
+        .navbar-brand { font-weight: 700; background: -webkit-linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .card { border: 1px solid #dbdbdb; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); background-color: #ffffff; }
+        .btn-gradient { background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); color: white; border: none; font-weight: 600; transition: all 0.3s ease; }
+        .btn-gradient:hover { opacity: 0.9; transform: translateY(-1px); color: white; }
+        .btn-gradient:disabled { background: #ccc; opacity: 0.7; transform: none; }
+        .badge-verified { color: #0095f6; font-size: 0.85em; }
+        .comment-item { border-bottom: 1px solid #f0f0f0; padding: 12px 0; }
+        .comment-item:last-child { border-bottom: none; }
+        .comment-reply { border-left: 2px solid #dbdbdb; padding-left: 15px; margin-top: 10px; margin-left: 20px; font-size: 0.95em; }
+        .stats-box { border: 1px solid #dbdbdb; border-radius: 6px; padding: 15px; text-align: center; background-color: #fcfcfc; height: 100%; }
+        .stats-num { font-size: 1.5rem; font-weight: 700; color: #cc2366; }
+        .stats-label { font-size: 0.85rem; color: #8e8e8e; text-transform: uppercase; letter-spacing: 0.5px; }
+        .spinner-container { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; }
+        .progress-bar-custom { height: 8px; border-radius: 4px; background: linear-gradient(45deg, #f09433, #dc2743, #bc1888); width: 0%; transition: width 0.4s ease; }
+        .progress-container { width: 100%; background-color: #e9ecef; border-radius: 4px; overflow: hidden; height: 8px; margin-top: 15px; }
+        .alert-setup { border-left: 4px solid #0d6efd; }
+        .pulse-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #dc2743; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+        .cat-btn { cursor: pointer; transition: all 0.2s; }
+        .cat-btn:hover { transform: translateY(-1px); }
+        .cat-btn.active { box-shadow: 0 0 0 3px rgba(220,39,67,0.25); border-color: #dc2743 !important; }
+        .cat-card { border: 1px solid #dee2e6; border-radius: 8px; padding: 12px 8px; text-align: center; transition: all 0.2s; }
+        .cat-card .cat-icon { font-size: 1.3rem; }
+        .cat-card .cat-count { font-size: 1.1rem; font-weight: 700; color: #262626; }
+        .cat-card .cat-label { font-size: 0.75rem; color: #8e8e8e; text-transform: uppercase; }
+        .top-comment-pill { display: inline-block; background: #f0f0f0; border-radius: 20px; padding: 4px 12px; margin: 3px; font-size: 0.85em; cursor: pointer; transition: all 0.2s; }
+        .top-comment-pill:hover { background: #dc2743; color: white; }
+        .top-comment-pill .pill-count { font-weight: 700; margin-left: 4px; }
+        .filter-chip { display: inline-flex; align-items: center; background: #e8f4fd; color: #0066cc; border-radius: 16px; padding: 3px 10px; margin: 2px; font-size: 0.8em; }
+        .filter-chip .remove { cursor: pointer; margin-left: 6px; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -126,9 +46,7 @@
     <nav class="navbar navbar-expand-lg sticky-top mb-4">
         <div class="container">
             <a class="navbar-brand fs-4" href="#"><i class="fab fa-instagram me-2"></i>Reel Scraper</a>
-            <span class="navbar-text">
-                <span class="badge bg-dark">v2.0</span>
-            </span>
+            <span class="navbar-text"><span class="badge bg-dark">v3.0 Smart Filter</span></span>
         </div>
     </nav>
 
@@ -136,26 +54,24 @@
         <!-- Setup Warning -->
         <div class="alert alert-info alert-setup mb-4" role="alert">
             <div class="d-flex">
-                <div class="me-3 fs-3 text-info">
-                    <i class="fas fa-info-circle"></i>
-                </div>
+                <div class="me-3 fs-3 text-info"><i class="fas fa-info-circle"></i></div>
                 <div>
                     <h5 class="alert-heading fw-bold">How to use</h5>
                     <p class="mb-1">1. Paste your Instagram Reel URL below.</p>
-                    <p class="mb-1">2. Paste your Instagram <code>sessionid</code> cookie (see instructions below).</p>
-                    <p class="mb-1">3. Click Scrape — get comments, replies & profiles as CSV.</p>
-                    <p class="mb-0 small text-muted mt-2"><strong>How to get your sessionid:</strong> Open Instagram in your browser → log in → press <kbd>⌘+⌥+I</kbd> (Mac) or <kbd>F12</kbd> (Windows) → Application tab → Cookies → instagram.com → copy the value of <code>sessionid</code>.</p>
+                    <p class="mb-1">2. Paste your Instagram <code>sessionid</code> cookie.</p>
+                    <p class="mb-1">3. Click Scrape — comments are fetched and auto-categorized.</p>
+                    <p class="mb-1">4. Filter by category, search keywords, or click common comments.</p>
+                    <p class="mb-0">5. Download all or filtered comments as CSV.</p>
+                    <p class="mb-0 small text-muted mt-2"><strong>Get your sessionid:</strong> Open Instagram in browser → log in → press <kbd>⌘+⌥+I</kbd> (Mac) or <kbd>F12</kbd> (Windows) → Application tab → Cookies → instagram.com → copy the value of <code>sessionid</code>.</p>
                 </div>
             </div>
         </div>
 
+        <!-- Scraper Input Form -->
         <div class="row">
-            <!-- Scraper Input Form -->
             <div class="col-lg-12 mb-4">
                 <div class="card p-4">
                     <h4 class="fw-bold mb-3"><i class="fas fa-search me-2 text-danger"></i>Scrape Reel Comments</h4>
-                    <p class="text-muted">Enter any Instagram Reel URL (e.g., <code>https://www.instagram.com/reel/C8qmEYAyKwP/</code>) or the post shortcode to extract comments and user data.</p>
-                    
                     <form id="scrapeForm" class="row g-3">
                         <div class="col-md-12">
                             <label class="form-label fw-bold small">Instagram Reel URL</label>
@@ -164,311 +80,448 @@
                                 <input type="text" class="form-control border-start-0 ps-0" id="reelUrl" placeholder="https://www.instagram.com/reel/..." required>
                             </div>
                         </div>
-                        <div class="col-md-8">
+                        <div class="col-md-7">
                             <label class="form-label fw-bold small">Instagram Session ID <span class="text-muted">(required)</span></label>
                             <div class="input-group">
                                 <span class="input-group-text bg-white border-end-0 text-muted"><i class="fas fa-key"></i></span>
-                                <input type="password" class="form-control border-start-0 ps-0" id="sessionId" placeholder="Paste your sessionid cookie value here..." required>
+                                <input type="password" class="form-control border-start-0 ps-0" id="sessionId" placeholder="Paste your sessionid cookie value..." required>
                             </div>
                         </div>
                         <div class="col-md-2">
                             <label class="form-label fw-bold small">Max Comments</label>
                             <input type="number" class="form-control" id="maxComments" value="500" min="1" max="10000">
                         </div>
-                        <div class="col-md-2 d-grid">
+                        <div class="col-md-3 d-grid">
                             <label class="form-label fw-bold small">&nbsp;</label>
-                            <button type="submit" class="btn btn-gradient" id="btnScrape">
-                                <i class="fas fa-rocket me-2"></i>Scrape
-                            </button>
+                            <button type="submit" class="btn btn-gradient" id="btnScrape"><i class="fas fa-rocket me-2"></i>Scrape</button>
                         </div>
                     </form>
                 </div>
             </div>
         </div>
 
-        <!-- Processing State (hidden by default) -->
+        <!-- Processing -->
         <div class="row d-none" id="processingState">
-            <div class="col-12 mb-4">
-                <div class="card p-4">
-                    <div class="spinner-container">
-                        <div class="spinner-border text-danger mb-3" style="width: 3rem; height: 3rem;" role="status">
-                            <span class="visually-hidden">Loading...</span>
-                        </div>
-                        <h4 class="fw-bold" id="statusHeader"><span class="pulse-dot me-2"></span>Scraping Comments</h4>
-                        <p class="text-muted text-center" id="statusMessage">Fetching comments from Instagram... This may take 10-30 seconds.</p>
-                        <div class="progress-container col-md-6">
-                            <div class="progress-bar-custom" id="progressBar" style="width: 30%;"></div>
-                        </div>
-                        <p class="small text-muted mt-2">Please don't close this page while scraping is in progress.</p>
-                    </div>
+            <div class="col-12 mb-4"><div class="card p-4">
+                <div class="spinner-container">
+                    <div class="spinner-border text-danger mb-3" style="width: 3rem; height: 3rem;" role="status"><span class="visually-hidden">Loading...</span></div>
+                    <h4 class="fw-bold"><span class="pulse-dot me-2"></span>Scraping Comments</h4>
+                    <p class="text-muted text-center" id="statusMessage">Fetching comments from Instagram... This may take 10-30 seconds.</p>
+                    <div class="progress-container col-md-6"><div class="progress-bar-custom" id="progressBar" style="width: 30%;"></div></div>
+                    <p class="small text-muted mt-2">Please don't close this page while scraping is in progress.</p>
                 </div>
-            </div>
+            </div></div>
         </div>
 
-        <!-- Error State (hidden by default) -->
+        <!-- Error -->
         <div class="row d-none" id="errorState">
-            <div class="col-12 mb-4">
-                <div class="card p-4 border-danger">
-                    <div class="d-flex align-items-center text-danger mb-3">
-                        <i class="fas fa-times-circle fs-3 me-3"></i>
-                        <h4 class="fw-bold mb-0">Scrape Failed</h4>
-                    </div>
-                    <div class="alert alert-danger" id="errorDetails">
-                        Something went wrong during comment extraction.
-                    </div>
-                    <div>
-                        <button class="btn btn-outline-danger" onclick="resetForm()"><i class="fas fa-arrow-left me-2"></i>Try Another Reel</button>
-                    </div>
-                </div>
-            </div>
+            <div class="col-12 mb-4"><div class="card p-4 border-danger">
+                <div class="d-flex align-items-center text-danger mb-3"><i class="fas fa-times-circle fs-3 me-3"></i><h4 class="fw-bold mb-0">Scrape Failed</h4></div>
+                <div class="alert alert-danger" id="errorDetails">Something went wrong.</div>
+                <button class="btn btn-outline-danger" onclick="resetForm()"><i class="fas fa-arrow-left me-2"></i>Try Another Reel</button>
+            </div></div>
         </div>
 
-        <!-- Success Results (hidden by default) -->
+        <!-- Results -->
         <div class="row d-none" id="resultsState">
-            <!-- Left Side: Downloads and Stats -->
+            <!-- Left Sidebar -->
             <div class="col-lg-4 mb-4">
-                <div class="card p-4 h-100 d-flex flex-column justify-content-between">
+                <div class="card p-4 h-100">
                     <div>
-                        <h4 class="fw-bold mb-4"><i class="fas fa-check-circle text-success me-2"></i>Results Ready</h4>
-                        
-                        <div class="row mb-4">
-                            <div class="col-6 mb-3">
-                                <div class="stats-box">
-                                    <div class="stats-num" id="statComments">0</div>
-                                    <div class="stats-label">Comments</div>
-                                </div>
-                            </div>
-                            <div class="col-6 mb-3">
-                                <div class="stats-box">
-                                    <div class="stats-num" id="statReplies">0</div>
-                                    <div class="stats-label">Replies</div>
-                                </div>
-                            </div>
-                            <div class="col-6">
-                                <div class="stats-box">
-                                    <div class="stats-num" id="statProfiles">0</div>
-                                    <div class="stats-label">Profiles</div>
-                                </div>
-                            </div>
-                            <div class="col-6">
-                                <div class="stats-box">
-                                    <div class="stats-num" id="statReported">0</div>
-                                    <div class="stats-label">Total on Reel</div>
-                                </div>
-                            </div>
+                        <h4 class="fw-bold mb-4"><i class="fas fa-check-circle text-success me-2"></i>Results</h4>
+                        <div class="row mb-3">
+                            <div class="col-6 mb-2"><div class="stats-box"><div class="stats-num" id="statComments">0</div><div class="stats-label">Comments</div></div></div>
+                            <div class="col-6 mb-2"><div class="stats-box"><div class="stats-num" id="statReplies">0</div><div class="stats-label">Replies</div></div></div>
+                            <div class="col-6"><div class="stats-box"><div class="stats-num" id="statProfiles">0</div><div class="stats-label">Profiles</div></div></div>
+                            <div class="col-6"><div class="stats-box"><div class="stats-num" id="statReported">0</div><div class="stats-label">Total on Reel</div></div></div>
                         </div>
                     </div>
-                    
-                    <div>
-                        <h6 class="fw-bold mb-3"><i class="fas fa-download me-2"></i>Download Files</h6>
+
+                    <!-- Auto-Categories -->
+                    <div class="mb-3">
+                        <h6 class="fw-bold mb-2"><i class="fas fa-magic me-1 text-primary"></i>Smart Categories</h6>
+                        <div id="categoryGrid" class="row g-2"></div>
+                        <p class="small text-muted mt-1 mb-0">Click a category to filter</p>
+                    </div>
+
+                    <!-- Top Repeated Comments -->
+                    <div class="mb-3" id="topCommentsSection">
+                        <h6 class="fw-bold mb-2"><i class="fas fa-fire me-1 text-warning"></i>Top Repeated Comments</h6>
+                        <div id="topCommentsList"></div>
+                    </div>
+
+                    <!-- Downloads -->
+                    <div class="mt-auto pt-3">
+                        <h6 class="fw-bold mb-2"><i class="fas fa-download me-2"></i>Download</h6>
                         <div class="d-grid gap-2">
-                            <button type="button" id="dlCommentsCsv" class="btn btn-outline-success" onclick="downloadFile('comments')">
-                                <i class="fas fa-file-csv me-2"></i>Comments + Replies CSV
-                            </button>
-                            <button type="button" id="dlCommentersCsv" class="btn btn-outline-primary" onclick="downloadFile('commenters')">
-                                <i class="fas fa-users me-2"></i>Commenter Profiles CSV
-                            </button>
-                            <button type="button" id="dlJson" class="btn btn-outline-secondary" onclick="downloadFile('json')">
-                                <i class="fas fa-file-code me-2"></i>Full JSON Export
-                            </button>
+                            <button type="button" class="btn btn-outline-success" onclick="downloadCSV('comments', 'all')"><i class="fas fa-file-csv me-2"></i>All Comments CSV</button>
+                            <button type="button" class="btn btn-outline-success" onclick="downloadCSV('comments', 'filtered')"><i class="fas fa-filter me-2"></i>Filtered Comments CSV <span class="badge bg-danger" id="filteredCountBadge" style="display:none">0</span></button>
+                            <button type="button" class="btn btn-outline-primary" onclick="downloadCSV('commenters', 'all')"><i class="fas fa-users me-2"></i>All Commenter Profiles CSV</button>
+                            <button type="button" class="btn btn-outline-secondary" onclick="downloadCSV('json', 'all')"><i class="fas fa-file-code me-2"></i>Full JSON Export</button>
                         </div>
                     </div>
-                    
+
                     <div class="mt-3">
-                        <button class="btn btn-gradient w-100" onclick="resetForm()">
-                            <i class="fas fa-redo me-2"></i>Scrape Another Reel
-                        </button>
+                        <button class="btn btn-gradient w-100" onclick="resetForm()"><i class="fas fa-redo me-2"></i>Scrape Another Reel</button>
                     </div>
                 </div>
             </div>
 
-            <!-- Right Side: Live Comments Preview -->
+            <!-- Right: Comments -->
             <div class="col-lg-8 mb-4">
                 <div class="card p-4 h-100">
-                    <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
-                        <h4 class="fw-bold mb-0"><i class="far fa-comments me-2 text-danger"></i>Comments Preview (Top 50)</h4>
-                        <span class="badge bg-danger rounded-pill" id="badgeCommentsCount">0 comments</span>
+                    <!-- Search & Filter Bar -->
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h4 class="fw-bold mb-0"><i class="far fa-comments me-2 text-danger"></i>Comments</h4>
+                            <span class="badge bg-danger rounded-pill" id="badgeCommentsCount">0 comments</span>
+                        </div>
+                        <div class="input-group mb-2">
+                            <span class="input-group-text bg-white text-muted"><i class="fas fa-search"></i></span>
+                            <input type="text" class="form-control" id="keywordSearch" placeholder="Search keywords (e.g. DM, interested, done, link)...">
+                        </div>
+                        <div id="activeFilters" class="mb-2"></div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="small text-muted" id="filterStatus">Showing all comments</span>
+                            <button class="btn btn-sm btn-outline-secondary" id="clearFiltersBtn" onclick="clearAllFilters()" style="display:none"><i class="fas fa-times me-1"></i>Clear Filters</button>
+                        </div>
                     </div>
 
-                    <div style="max-height: 600px; overflow-y: auto; padding-right: 10px;" id="commentsContainer">
-                        <!-- Comment template loaded via JS -->
-                    </div>
+                    <div style="max-height: 700px; overflow-y: auto; padding-right: 10px;" id="commentsContainer"></div>
                 </div>
             </div>
         </div>
 
-        <!-- Footer -->
         <footer class="text-center py-4 text-muted mt-5 border-top">
-            <p class="mb-0">Built with <i class="fas fa-heart text-danger"></i> for Sai Sankeerth • Powered by GraphQL & Flask</p>
+            <p class="mb-0">Built with <i class="fas fa-heart text-danger"></i> for Sai Sankeerth • v3.0 Smart Filter • Powered by GraphQL & Flask</p>
         </footer>
     </div>
 
-    <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        let currentResultId = null;
-        let lastResponseData = null;
+        let ALL_COMMENTS = [];
+        let ALL_COMMENTERS = [];
+        let SHORTCODE = '';
+        let activeCategory = null;
+        let activeKeyword = '';
+        let activeQuickFilters = [];
 
+        // Category definitions
+        const CATEGORIES = {
+            dm_request: { label: 'DM Requests', icon: 'fa-envelope', color: '#dc2743', patterns: [/\bdm\b/i, /\bdm\s*me\b/i, /\bsend\s*dm\b/i, /\bdm\s*pl(s|ease)?\b/i, /\bcheck\s*dm\b/i, /\bdmmed\b/i, /\bdm'd\b/i] },
+            interested: { label: 'Interested', icon: 'fa-thumbs-up', color: '#28a745', patterns: [/\binterest/i, /\bwant\b/i, /\bneed\b/i, /\bhow\s*much\b/i, /\bprice\b/i, /\bwhere\b/i, /\bhow\s*to\b/i, /\bget\s*this\b/i] },
+            done: { label: 'Done / Participated', icon: 'fa-check-double', color: '#007bff', patterns: [/\bdone\b/i, /\bcompleted\b/i, /\bfinished\b/i, /\bsubmitted\b/i, /\bshared\b/i, /\bposted\b/i, /\buploaded\b/i] },
+            question: { label: 'Questions', icon: 'fa-question-circle', color: '#ffc107', patterns: [/\?/, /\bhow\b/i, /\bwhat\b/i, /\bwhen\b/i, /\bwhere\b/i, /\bwhy\b/i, /\bcan\s*i\b/i, /\bis\s*it\b/i] },
+            tagged: { label: 'Tagged Others', icon: 'fa-at', color: '#6f42c1', patterns: [/@\w+/] },
+            link_share: { label: 'Link / URL', icon: 'fa-link', color: '#fd7e14', patterns: [/https?:\/\//, /\bwww\./i, /\.com\b/i, /\.in\b/i] },
+            emoji_only: { label: 'Emoji Only', icon: 'fa-face-smile', color: '#e83e8c', patterns: [/^[\s\p{Emoji}\p{Emoji_Presentation}\p{Emoji_Modifier}\p{Emoji_Component}]+$/u] },
+            positive: { label: 'Positive / Praise', icon: 'fa-heart', color: '#e056fd', patterns: [/\blove\b/i, /\bawesome\b/i, /\bgreat\b/i, /\bnice\b/i, /\bamazing\b/i, /\bwow\b/i, /\bcool\b/i, /\b🔥/i, /\b❤/i, /\b😍/i] },
+        };
+
+        function categorizeComment(text) {
+            if (!text) return [];
+            const cats = [];
+            for (const [key, def] of Object.entries(CATEGORIES)) {
+                for (const p of def.patterns) {
+                    if (p.test(text)) { cats.push(key); break; }
+                }
+            }
+            return cats.length ? cats : ['other'];
+        }
+
+        // === SCRAPE ===
         document.getElementById('scrapeForm').addEventListener('submit', function(e) {
             e.preventDefault();
             const url = document.getElementById('reelUrl').value;
             const sessionid = document.getElementById('sessionId').value;
             const maxComments = parseInt(document.getElementById('maxComments').value) || 500;
+            if (!url || !sessionid) { showError('Please provide both the Reel URL and your sessionid.'); return; }
 
-            if (!url) return;
-            if (!sessionid) {
-                showError('Please provide your Instagram sessionid cookie.');
-                return;
-            }
-
-            // Update UI State
             document.getElementById('btnScrape').disabled = true;
             document.getElementById('btnScrape').innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Scraping...';
             document.getElementById('processingState').classList.remove('d-none');
             document.getElementById('errorState').classList.add('d-none');
             document.getElementById('resultsState').classList.add('d-none');
-            
-            // Animate progress bar
-            const bar = document.getElementById('progressBar');
-            bar.style.width = '30%';
+            document.getElementById('progressBar').style.width = '30%';
 
-            // POST to scrape endpoint (synchronous — waits for full response)
             fetch('/api/scrape', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ url: url, sessionid: sessionid, max_comments: maxComments })
+                body: JSON.stringify({ url, sessionid, max_comments: maxComments })
             })
             .then(res => res.json())
-            .then(data => {
-                if (data.error) {
-                    showError(data.error);
-                } else {
-                    lastResponseData = data;
-                    showResults(data);
-                }
-            })
-            .catch(err => {
-                showError('The server took too long to respond. Try reducing max comments to 100-200. The free tier has a 60s timeout.');
-            });
+            .then(data => { if (data.error) showError(data.error); else showResults(data); })
+            .catch(err => showError('The server took too long to respond. Try reducing max comments to 100-200.'));
         });
 
         function showResults(data) {
-            document.getElementById('processingState').classList.add('d-none');
-            
-            currentResultId = data.result_id;
+            ALL_COMMENTS = data.comments || [];
+            ALL_COMMENTERS = data.commenters || [];
+            SHORTCODE = data.shortcode || 'reel';
+            activeCategory = null;
+            activeKeyword = '';
+            activeQuickFilters = [];
 
-            // Set stats
+            document.getElementById('processingState').classList.add('d-none');
             document.getElementById('statComments').innerText = Number(data.total_comments).toLocaleString();
             document.getElementById('statReplies').innerText = Number(data.total_replies).toLocaleString();
             document.getElementById('statProfiles').innerText = Number(data.unique_commenters).toLocaleString();
             document.getElementById('statReported').innerText = Number(data.total_reported).toLocaleString();
             document.getElementById('badgeCommentsCount').innerText = `${Number(data.total_comments).toLocaleString()} comments`;
 
-            // Stats already set above
-            // Downloads are handled client-side via downloadFile()
-
-            // Render comments
-            const container = document.getElementById('commentsContainer');
-            container.innerHTML = '';
-            
-            if (!data.comments_preview || data.comments_preview.length === 0) {
-                container.innerHTML = '<div class="text-center py-5 text-muted">No comments found on this reel.</div>';
-            } else {
-                data.comments_preview.forEach(c => {
-                    const div = document.createElement('div');
-                    div.className = 'comment-item';
-                    
-                    let badgeHtml = c.verified ? ' <i class="fas fa-check-circle badge-verified"></i>' : '';
-                    let repliesHtml = '';
-                    
-                    if (c.replies && c.replies.length > 0) {
-                        c.replies.forEach(r => {
-                            repliesHtml += `
-                                <div class="comment-reply">
-                                    <div class="d-flex align-items-center mb-1">
-                                        <a href="https://www.instagram.com/${r.username}/" target="_blank" class="fw-bold text-decoration-none text-dark small">@${r.username}</a>
-                                    </div>
-                                    <div class="comment-text text-muted">${escapeHtml(r.text)}</div>
-                                    <div class="mt-1"><small class="text-muted"><i class="far fa-heart"></i> ${r.likes} likes</small></div>
-                                </div>
-                            `;
-                        });
-                    }
-
-                    div.innerHTML = `
-                        <div class="d-flex justify-content-between">
-                            <div class="d-flex align-items-center mb-1">
-                                <a href="${c.profile_url}" target="_blank" class="fw-bold text-decoration-none text-dark">@${c.username}</a>
-                                ${badgeHtml}
-                            </div>
-                            <span class="badge bg-light text-muted border"><i class="far fa-heart text-danger me-1"></i> ${c.likes}</span>
-                        </div>
-                        <div class="comment-text my-2 text-secondary">${escapeHtml(c.text)}</div>
-                        <div class="d-flex align-items-center text-muted small gap-3">
-                            <span><i class="far fa-clock me-1"></i> ${formatDate(c.created_at)}</span>
-                            ${c.reply_count > 0 ? `<span><i class="far fa-comment-dots me-1"></i> ${c.reply_count} replies</span>` : ''}
-                        </div>
-                        ${repliesHtml}
-                    `;
-                    container.appendChild(div);
-                });
-
-                if (data.has_more) {
-                    const moreDiv = document.createElement('div');
-                    moreDiv.className = 'text-center py-3 text-muted border-top mt-3 small';
-                    moreDiv.innerText = `... and ${(data.total_comments - 50).toLocaleString()} more. Open the CSV files to view the complete list!`;
-                    container.appendChild(moreDiv);
-                }
-            }
-
+            buildCategories();
+            buildTopComments();
+            renderComments();
             document.getElementById('resultsState').classList.remove('d-none');
             document.getElementById('btnScrape').disabled = false;
             document.getElementById('btnScrape').innerHTML = '<i class="fas fa-rocket me-2"></i>Scrape';
         }
 
+        // === CATEGORIES ===
+        function buildCategories() {
+            const counts = {};
+            ALL_COMMENTS.forEach(c => {
+                const cats = categorizeComment(c.text);
+                c._categories = cats;
+                cats.forEach(cat => { counts[cat] = (counts[cat] || 0) + 1; });
+            });
+
+            const grid = document.getElementById('categoryGrid');
+            grid.innerHTML = '';
+            const sortedCats = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+            for (const [key, count] of sortedCats) {
+                if (key === 'other' && count < 2) continue;
+                const def = CATEGORIES[key] || { label: 'Other', icon: 'fa-comment', color: '#6c757d' };
+                const col = document.createElement('div');
+                col.className = 'col-6';
+                col.innerHTML = `
+                    <div class="cat-card cat-btn" data-cat="${key}" onclick="toggleCategory('${key}')" id="catBtn_${key}">
+                        <div class="cat-icon" style="color: ${def.color}"><i class="fas ${def.icon}"></i></div>
+                        <div class="cat-count">${count}</div>
+                        <div class="cat-label">${def.label}</div>
+                    </div>
+                `;
+                grid.appendChild(col);
+            }
+        }
+
+        function toggleCategory(key) {
+            if (activeCategory === key) {
+                activeCategory = null;
+                document.getElementById('catBtn_' + key)?.classList.remove('active');
+            } else {
+                document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+                activeCategory = key;
+                document.getElementById('catBtn_' + key)?.classList.add('active');
+            }
+            renderComments();
+            updateFilterStatus();
+        }
+
+        // === TOP REPEATED COMMENTS ===
+        function buildTopComments() {
+            const freq = {};
+            ALL_COMMENTS.forEach(c => {
+                const norm = c.text.trim().toLowerCase().replace(/^(dm|dm me|done|interested)\s*[!?.]*$/i, (m) => m.split(/\s+/)[0] + ' ' + m.replace(m.split(/\s+/)[0], '').trim());
+                const key = c.text.trim().toLowerCase();
+                if (key.length < 2 || key.length > 60) return;
+                freq[key] = (freq[key] || 0) + 1;
+            });
+
+            const top = Object.entries(freq).filter(([t, c]) => c >= 3).sort((a, b) => b[1] - a[1]).slice(0, 8);
+            const container = document.getElementById('topCommentsList');
+            if (top.length === 0) { container.innerHTML = '<p class="small text-muted mb-0">No repeated patterns found.</p>'; return; }
+            container.innerHTML = '';
+            top.forEach(([text, count]) => {
+                const pill = document.createElement('span');
+                pill.className = 'top-comment-pill';
+                pill.innerHTML = `"${escapeHtml(text.length > 30 ? text.substring(0, 30) + '…' : text)}" <span class="pill-count">×${count}</span>`;
+                pill.onclick = () => toggleQuickFilter(text);
+                container.appendChild(pill);
+            });
+        }
+
+        function toggleQuickFilter(text) {
+            const idx = activeQuickFilters.indexOf(text);
+            if (idx >= 0) { activeQuickFilters.splice(idx, 1); }
+            else { activeQuickFilters.push(text); }
+            renderActiveFilters();
+            renderComments();
+            updateFilterStatus();
+        }
+
+        function renderActiveFilters() {
+            const container = document.getElementById('activeFilters');
+            container.innerHTML = '';
+            if (activeQuickFilters.length === 0) return;
+            activeQuickFilters.forEach((text, i) => {
+                const chip = document.createElement('span');
+                chip.className = 'filter-chip';
+                chip.innerHTML = `"${escapeHtml(text.length > 20 ? text.substring(0, 20) + '…' : text)}" <span class="remove" onclick="toggleQuickFilter('${text.replace(/'/g, "\\'")}')">&times;</span>`;
+                container.appendChild(chip);
+            });
+        }
+
+        // === SEARCH ===
+        document.getElementById('keywordSearch').addEventListener('input', function() {
+            activeKeyword = this.value.trim().toLowerCase();
+            renderComments();
+            updateFilterStatus();
+        });
+
+        function clearAllFilters() {
+            activeCategory = null;
+            activeKeyword = '';
+            activeQuickFilters = [];
+            document.getElementById('keywordSearch').value = '';
+            document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+            renderActiveFilters();
+            renderComments();
+            updateFilterStatus();
+        }
+
+        function updateFilterStatus() {
+            const filtered = getFilteredComments();
+            const status = document.getElementById('filterStatus');
+            const badge = document.getElementById('filteredCountBadge');
+            const clearBtn = document.getElementById('clearFiltersBtn');
+            const isFiltered = activeCategory || activeKeyword || activeQuickFilters.length > 0;
+
+            if (isFiltered) {
+                status.innerText = `Showing ${filtered.length} of ${ALL_COMMENTS.length} comments`;
+                badge.innerText = filtered.length;
+                badge.style.display = 'inline';
+                clearBtn.style.display = 'inline';
+            } else {
+                status.innerText = `Showing all ${ALL_COMMENTS.length} comments`;
+                badge.style.display = 'none';
+                clearBtn.style.display = 'none';
+            }
+        }
+
+        // === FILTERING ===
+        function getFilteredComments() {
+            return ALL_COMMENTS.filter(c => {
+                if (activeCategory) {
+                    if (!c._categories || !c._categories.includes(activeCategory)) return false;
+                }
+                if (activeKeyword) {
+                    if (!c.text.toLowerCase().includes(activeKeyword) && !c.username.toLowerCase().includes(activeKeyword)) return false;
+                }
+                if (activeQuickFilters.length > 0) {
+                    const norm = c.text.trim().toLowerCase();
+                    if (!activeQuickFilters.some(f => norm === f || norm.includes(f))) return false;
+                }
+                return true;
+            });
+        }
+
+        // === RENDER ===
+        function renderComments() {
+            const filtered = getFilteredComments();
+            const container = document.getElementById('commentsContainer');
+            container.innerHTML = '';
+
+            if (filtered.length === 0) {
+                container.innerHTML = '<div class="text-center py-5 text-muted"><i class="fas fa-comment-slash fs-1 mb-3 d-block"></i>No comments match your filters.</div>';
+                updateFilterStatus();
+                return;
+            }
+
+            filtered.slice(0, 200).forEach(c => {
+                const div = document.createElement('div');
+                div.className = 'comment-item';
+                let badgeHtml = c.verified ? ' <i class="fas fa-check-circle badge-verified"></i>' : '';
+                let catHtml = '';
+                if (c._categories) {
+                    c._categories.forEach(cat => {
+                        if (cat === 'other') return;
+                        const def = CATEGORIES[cat];
+                        if (def) catHtml += `<span class="badge bg-light text-muted border me-1" style="font-size:0.65em"><i class="fas ${def.icon} me-1"></i>${def.label}</span>`;
+                    });
+                }
+                let repliesHtml = '';
+                if (c.replies && c.replies.length > 0) {
+                    c.replies.forEach(r => {
+                        repliesHtml += `<div class="comment-reply"><div class="d-flex align-items-center mb-1"><a href="https://www.instagram.com/${r.username}/" target="_blank" class="fw-bold text-decoration-none text-dark small">@${r.username}</a></div><div class="comment-text text-muted">${escapeHtml(r.text)}</div></div>`;
+                    });
+                }
+                div.innerHTML = `
+                    <div class="d-flex justify-content-between">
+                        <div class="d-flex align-items-center mb-1">
+                            <a href="${c.profile_url}" target="_blank" class="fw-bold text-decoration-none text-dark">@${c.username}</a>
+                            ${badgeHtml}
+                        </div>
+                        <span class="badge bg-light text-muted border"><i class="far fa-heart text-danger me-1"></i> ${c.likes}</span>
+                    </div>
+                    <div class="comment-text my-2 text-secondary">${escapeHtml(c.text)}</div>
+                    <div class="d-flex align-items-center text-muted small gap-2 flex-wrap">
+                        <span><i class="far fa-clock me-1"></i> ${formatDate(c.created_at)}</span>
+                        ${c.reply_count > 0 ? `<span><i class="far fa-comment-dots me-1"></i> ${c.reply_count} replies</span>` : ''}
+                    </div>
+                    ${catHtml ? `<div class="mt-1">${catHtml}</div>` : ''}
+                    ${repliesHtml}
+                `;
+                container.appendChild(div);
+            });
+
+            if (filtered.length > 200) {
+                const moreDiv = document.createElement('div');
+                moreDiv.className = 'text-center py-3 text-muted border-top mt-3 small';
+                moreDiv.innerText = `Showing 200 of ${filtered.length} filtered comments. Download CSV for the full list.`;
+                container.appendChild(moreDiv);
+            }
+            updateFilterStatus();
+        }
+
+        // === DOWNLOAD ===
+        function downloadCSV(type, scope) {
+            let rows = [];
+            let filename = '';
+
+            if (type === 'comments') {
+                const data = scope === 'filtered' ? getFilteredComments() : ALL_COMMENTS;
+                rows.push(['index','type','comment_id','parent_comment_id','username','full_name','user_id','verified','text','likes','created_at','reply_count','profile_url','categories']);
+                data.forEach(c => {
+                    const cats = (c._categories || []).join('; ');
+                    rows.push([c.index,'comment',c.comment_id,'',c.username,c.full_name,c.user_id,c.verified,c.text,c.likes,c.created_at,c.reply_count,c.profile_url,cats]);
+                    if (c.replies) c.replies.forEach((r, i) => {
+                        rows.push([`${c.index}.${i+1}`,'reply','',c.comment_id,r.username,r.full_name||'',r.user_id||'',false,r.text,r.likes,'','','','']);
+                    });
+                });
+                filename = `ig_${SHORTCODE}_${scope}_comments.csv`;
+            } else if (type === 'commenters') {
+                rows.push(['username','user_id','full_name','verified','is_private','profile_url']);
+                ALL_COMMENTERS.forEach(c => rows.push([c.username,c.user_id,c.full_name,c.verified,c.is_private,c.profile_url]));
+                filename = `ig_${SHORTCODE}_commenters.csv`;
+            } else if (type === 'json') {
+                const data = { shortcode: SHORTCODE, comments: scope === 'filtered' ? getFilteredComments() : ALL_COMMENTS, commenters: ALL_COMMENTERS };
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a'); a.href = url; a.download = `ig_${SHORTCODE}_full.json`;
+                document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+                return;
+            }
+
+            const csv = rows.map(r => r.map(cell => {
+                const s = String(cell ?? '');
+                return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s;
+            }).join(',')).join('\n');
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href = url; a.download = filename;
+            document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+        }
+
+        // === UTILS ===
         function showError(errText) {
             document.getElementById('processingState').classList.add('d-none');
             document.getElementById('resultsState').classList.add('d-none');
-            
-            const errDiv = document.getElementById('errorDetails');
-            errDiv.innerText = errText;
+            document.getElementById('errorDetails').innerText = errText;
             document.getElementById('errorState').classList.remove('d-none');
-            
             document.getElementById('btnScrape').disabled = false;
             document.getElementById('btnScrape').innerHTML = '<i class="fas fa-rocket me-2"></i>Scrape';
-        }
-
-        function downloadFile(type) {
-            if (!lastResponseData) return;
-            let b64, filename, mime;
-            if (type === 'comments') {
-                b64 = lastResponseData.comments_csv_b64;
-                filename = `ig_${lastResponseData.shortcode}_comments.csv`;
-                mime = 'text/csv';
-            } else if (type === 'commenters') {
-                b64 = lastResponseData.commenters_csv_b64;
-                filename = `ig_${lastResponseData.shortcode}_commenters.csv`;
-                mime = 'text/csv';
-            } else if (type === 'json') {
-                b64 = lastResponseData.json_b64;
-                filename = `ig_${lastResponseData.shortcode}_full.json`;
-                mime = 'application/json';
-            }
-            if (!b64) { alert('Download data not available. Please scrape again.'); return; }
-            // Decode base64 -> blob -> download
-            const byteChars = atob(b64);
-            const byteNumbers = new Array(byteChars.length);
-            for (let i = 0; i < byteChars.length; i++) byteNumbers[i] = byteChars.charCodeAt(i);
-            const byteArray = new Uint8Array(byteNumbers);
-            const blob = new Blob([byteArray], { type: mime });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
         }
 
         function resetForm() {
@@ -477,29 +530,21 @@
             document.getElementById('btnScrape').disabled = false;
             document.getElementById('btnScrape').innerHTML = '<i class="fas fa-rocket me-2"></i>Scrape';
             document.getElementById('errorState').classList.add('d-none');
+            reel = '';
             document.getElementById('resultsState').classList.add('d-none');
             document.getElementById('processingState').classList.add('d-none');
-            currentResultId = null;
+            ALL_COMMENTS = []; ALL_COMMENTERS = [];
         }
 
         function formatDate(isoStr) {
             if (!isoStr) return '';
-            try {
-                const date = new Date(isoStr);
-                return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-            } catch (e) {
-                return isoStr;
-            }
+            try { return new Date(isoStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); }
+            catch (e) { return isoStr; }
         }
 
         function escapeHtml(str) {
             if (!str) return '';
-            return str
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#039;");
+            return str.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");
         }
     </script>
 </body>

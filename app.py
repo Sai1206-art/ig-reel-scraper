@@ -1,7 +1,7 @@
 """
-Instagram Reel Comment Scraper - Web App (v2 - Synchronous mode)
+Instagram Reel Comment Scraper - Web App (v3 - Smart Filtering)
 Uses Instagram's GraphQL API with session cookies to scrape comments.
-No instaloader dependency — just requests + Flask.
+Returns all comments as JSON for client-side smart filtering and CSV generation.
 """
 import io
 import json
@@ -12,24 +12,16 @@ import time
 import uuid
 import traceback
 from datetime import datetime, timezone
-from flask import Flask, render_template, request, jsonify, send_file, Response
+from flask import Flask, render_template, request, jsonify, Response
 
 import requests
 
 app = Flask(__name__)
 
-# --- Global state for background scraping jobs (kept for compat) ---
-jobs = {}
-jobs_lock = __import__("threading").Lock()
-
-# Instagram GraphQL query hash for comments
 COMMENT_QUERY_HASH = "97b41c52301f77ce508f55e66d17620e"
 
-# Default cookies (from environment variable, JSON-encoded)
-DEFAULT_COOKIES = {}
 
 def get_cookies(user_sessionid=None):
-    """Get Instagram session cookies from env, user input, or defaults."""
     if user_sessionid:
         return {"sessionid": user_sessionid}
     cookies_json = os.environ.get("IG_COOKIES", "")
@@ -38,11 +30,10 @@ def get_cookies(user_sessionid=None):
             return json.loads(cookies_json)
         except:
             pass
-    return DEFAULT_COOKIES.copy()
+    return {}
 
 
 def extract_shortcode(url):
-    """Extract shortcode from Instagram reel URL."""
     url = url.strip()
     match = re.search(r'/reels?/([A-Za-z0-9_-]+)', url)
     if match:
@@ -53,7 +44,6 @@ def extract_shortcode(url):
 
 
 def fetch_comments_page(shortcode, first=50, after=None, cookies=None):
-    """Fetch a single page of comments from Instagram's GraphQL API."""
     if cookies is None:
         cookies = get_cookies()
 
@@ -98,7 +88,6 @@ def fetch_comments_page(shortcode, first=50, after=None, cookies=None):
 
 
 def parse_comment_node(node, index):
-    """Parse a single comment node into a flat dict."""
     owner = node.get("owner", {})
     commenter = {
         "username": owner.get("username", ""),
@@ -142,8 +131,7 @@ def parse_comment_node(node, index):
     }
 
 
-def scrape_all_comments(shortcode, max_comments=10000, cookies=None, job_id=None):
-    """Scrape all comments from a reel, paginating through GraphQL."""
+def scrape_all_comments(shortcode, max_comments=500, cookies=None):
     all_comments = []
     all_commenters = {}
     end_cursor = None
@@ -189,14 +177,6 @@ def scrape_all_comments(shortcode, max_comments=10000, cookies=None, job_id=None
                 if rc["user_id"] and rc["user_id"] not in all_commenters:
                     all_commenters[rc["user_id"]] = rc
 
-        # Update job progress if running in background mode
-        if job_id:
-            with jobs_lock:
-                if job_id in jobs:
-                    jobs[job_id]["comments_fetched"] = len(all_comments)
-                    jobs[job_id]["total_reported"] = total_reported
-                    jobs[job_id]["pages_done"] = page + 1
-
         if not page_info.get("has_next_page") or len(edges) == 0:
             break
 
@@ -219,69 +199,6 @@ def scrape_all_comments(shortcode, max_comments=10000, cookies=None, job_id=None
     }
 
 
-def generate_comments_csv(result):
-    """Generate CSV with all comments and replies."""
-    output = io.StringIO()
-    writer = csv.writer(output)
-    writer.writerow([
-        "index", "type", "comment_id", "parent_comment_id",
-        "username", "full_name", "user_id", "verified",
-        "text", "likes", "created_at", "reply_count",
-        "profile_url"
-    ])
-
-    for c in result["comments"]:
-        writer.writerow([
-            c["index"], "comment", c["comment_id"], "",
-            c["commenter"]["username"], c["commenter"]["full_name"],
-            c["commenter"]["user_id"], c["commenter"]["is_verified"],
-            c["text"], c["likes_count"], c["created_at_utc"],
-            c["reply_count"],
-            f"https://www.instagram.com/{c['commenter']['username']}/"
-        ])
-        for i, r in enumerate(c.get("replies", [])):
-            writer.writerow([
-                f"{c['index']}.{i+1}", "reply", r["comment_id"], c["comment_id"],
-                r["commenter"]["username"], r["commenter"].get("full_name", ""),
-                r["commenter"]["user_id"], r["commenter"].get("is_verified", False),
-                r["text"], r["likes_count"], r.get("created_at_utc", ""),
-                "", ""
-            ])
-
-    output.seek(0)
-    return output.getvalue()
-
-
-def generate_commenters_csv(result):
-    """Generate CSV with unique commenter profiles."""
-    output = io.StringIO()
-    writer = csv.writer(output)
-    writer.writerow([
-        "username", "user_id", "full_name", "verified",
-        "is_private", "profile_url", "profile_pic_url"
-    ])
-
-    seen = set()
-    for c in result["unique_commenters"]:
-        if c["username"] in seen:
-            continue
-        seen.add(c["username"])
-        writer.writerow([
-            c["username"], c["user_id"], c.get("full_name", ""),
-            c.get("is_verified", False), c.get("is_private", False),
-            f"https://www.instagram.com/{c['username']}/",
-            c.get("profile_pic_url", "")
-        ])
-
-    output.seek(0)
-    return output.getvalue()
-
-
-# --- Synchronous scrape result storage (in-memory, per request) ---
-# We store results keyed by a short ID so the download endpoints work
-_results_store = {}
-
-
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -289,7 +206,7 @@ def index():
 
 @app.route("/api/scrape", methods=["POST"])
 def scrape():
-    """Scrape comments synchronously and return results directly."""
+    """Scrape comments and return ALL data as JSON for client-side filtering."""
     data = request.json or {}
     url = data.get("url", "").strip()
     max_comments = data.get("max_comments", 500)
@@ -313,33 +230,47 @@ def scrape():
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
-    # Generate CSV/JSON data NOW and embed in response — no server round-trip
-    import base64
-    comments_csv = generate_comments_csv(result)
-    commenters_csv = generate_commenters_csv(result)
-    json_data = json.dumps(result, indent=2, ensure_ascii=False)
-
-    # Build preview
-    preview_comments = []
-    for c in result["comments"][:50]:
-        preview_comments.append({
+    # Build compact comment list for client-side processing
+    comments_out = []
+    for c in result["comments"]:
+        replies_out = []
+        for r in c.get("replies", []):
+            replies_out.append({
+                "username": r["commenter"]["username"],
+                "full_name": r["commenter"].get("full_name", ""),
+                "user_id": r["commenter"]["user_id"],
+                "text": r["text"],
+                "likes": r["likes_count"],
+            })
+        comments_out.append({
             "index": c["index"],
+            "comment_id": c["comment_id"],
             "username": c["commenter"]["username"],
             "full_name": c["commenter"].get("full_name", ""),
+            "user_id": c["commenter"]["user_id"],
             "verified": c["commenter"].get("is_verified", False),
             "text": c["text"],
             "likes": c["likes_count"],
             "created_at": c["created_at_utc"],
             "reply_count": len(c.get("replies", [])),
             "profile_url": f"https://www.instagram.com/{c['commenter']['username']}/",
-            "replies": [
-                {
-                    "username": r["commenter"]["username"],
-                    "text": r["text"],
-                    "likes": r["likes_count"],
-                }
-                for r in c.get("replies", [])[:5]
-            ]
+            "replies": replies_out,
+        })
+
+    # Build commenters list
+    commenters_out = []
+    seen = set()
+    for c in result["unique_commenters"]:
+        if c["username"] in seen:
+            continue
+        seen.add(c["username"])
+        commenters_out.append({
+            "username": c["username"],
+            "user_id": c["user_id"],
+            "full_name": c.get("full_name", ""),
+            "verified": c.get("is_verified", False),
+            "is_private": c.get("is_private", False),
+            "profile_url": f"https://www.instagram.com/{c['username']}/",
         })
 
     return jsonify({
@@ -347,50 +278,12 @@ def scrape():
         "total_comments": result["comment_count"],
         "total_replies": result["reply_count"],
         "total_reported": result["total_reported"],
-        "unique_commenters": len(result["unique_commenters"]),
+        "unique_commenters": len(commenters_out),
         "pages_fetched": result["pages_fetched"],
         "errors": result.get("errors", []),
-        "comments_preview": preview_comments,
-        "has_more": result["comment_count"] > 50,
-        # Base64-encoded file data for client-side download
-        "comments_csv_b64": base64.b64encode(comments_csv.encode("utf-8")).decode("ascii"),
-        "commenters_csv_b64": base64.b64encode(commenters_csv.encode("utf-8")).decode("ascii"),
-        "json_b64": base64.b64encode(json_data.encode("utf-8")).decode("ascii"),
+        "comments": comments_out,
+        "commenters": commenters_out,
     })
-
-
-@app.route("/api/results/<result_id>/download/<filetype>")
-def download(result_id, filetype):
-    """Download results as CSV or JSON."""
-    result = _results_store.get(result_id)
-    if not result:
-        return jsonify({"error": "Results expired. Please scrape again."}), 404
-
-    shortcode = result["reel"]
-
-    if filetype == "comments":
-        csv_data = generate_comments_csv(result)
-        return Response(
-            csv_data,
-            mimetype="text/csv",
-            headers={"Content-Disposition": f"attachment; filename=ig_{shortcode}_comments.csv"}
-        )
-    elif filetype == "commenters":
-        csv_data = generate_commenters_csv(result)
-        return Response(
-            csv_data,
-            mimetype="text/csv",
-            headers={"Content-Disposition": f"attachment; filename=ig_{shortcode}_commenters.csv"}
-        )
-    elif filetype == "json":
-        json_data = json.dumps(result, indent=2, ensure_ascii=False)
-        return Response(
-            json_data,
-            mimetype="application/json",
-            headers={"Content-Disposition": f"attachment; filename=ig_{shortcode}_full.json"}
-        )
-    else:
-        return jsonify({"error": "Invalid file type"}), 400
 
 
 @app.route("/health")
