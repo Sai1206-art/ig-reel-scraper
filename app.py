@@ -313,9 +313,11 @@ def scrape():
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
-    # Store result for download endpoints
-    result_id = str(uuid.uuid4())[:8]
-    _results_store[result_id] = result
+    # Generate CSV/JSON data NOW and embed in response — no server round-trip
+    import base64
+    comments_csv = generate_comments_csv(result)
+    commenters_csv = generate_commenters_csv(result)
+    json_data = json.dumps(result, indent=2, ensure_ascii=False)
 
     # Build preview
     preview_comments = []
@@ -341,7 +343,6 @@ def scrape():
         })
 
     return jsonify({
-        "result_id": result_id,
         "shortcode": shortcode,
         "total_comments": result["comment_count"],
         "total_replies": result["reply_count"],
@@ -351,6 +352,10 @@ def scrape():
         "errors": result.get("errors", []),
         "comments_preview": preview_comments,
         "has_more": result["comment_count"] > 50,
+        # Base64-encoded file data for client-side download
+        "comments_csv_b64": base64.b64encode(comments_csv.encode("utf-8")).decode("ascii"),
+        "commenters_csv_b64": base64.b64encode(commenters_csv.encode("utf-8")).decode("ascii"),
+        "json_b64": base64.b64encode(json_data.encode("utf-8")).decode("ascii"),
     })
 
 

@@ -262,15 +262,15 @@
                     <div>
                         <h6 class="fw-bold mb-3"><i class="fas fa-download me-2"></i>Download Files</h6>
                         <div class="d-grid gap-2">
-                            <a href="#" id="dlCommentsCsv" class="btn btn-outline-success">
+                            <button type="button" id="dlCommentsCsv" class="btn btn-outline-success" onclick="downloadFile('comments')">
                                 <i class="fas fa-file-csv me-2"></i>Comments + Replies CSV
-                            </a>
-                            <a href="#" id="dlCommentersCsv" class="btn btn-outline-primary">
+                            </button>
+                            <button type="button" id="dlCommentersCsv" class="btn btn-outline-primary" onclick="downloadFile('commenters')">
                                 <i class="fas fa-users me-2"></i>Commenter Profiles CSV
-                            </a>
-                            <a href="#" id="dlJson" class="btn btn-outline-secondary">
+                            </button>
+                            <button type="button" id="dlJson" class="btn btn-outline-secondary" onclick="downloadFile('json')">
                                 <i class="fas fa-file-code me-2"></i>Full JSON Export
-                            </a>
+                            </button>
                         </div>
                     </div>
                     
@@ -307,6 +307,7 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         let currentResultId = null;
+        let lastResponseData = null;
 
         document.getElementById('scrapeForm').addEventListener('submit', function(e) {
             e.preventDefault();
@@ -342,6 +343,7 @@
                 if (data.error) {
                     showError(data.error);
                 } else {
+                    lastResponseData = data;
                     showResults(data);
                 }
             })
@@ -362,10 +364,8 @@
             document.getElementById('statReported').innerText = Number(data.total_reported).toLocaleString();
             document.getElementById('badgeCommentsCount').innerText = `${Number(data.total_comments).toLocaleString()} comments`;
 
-            // Configure downloads
-            document.getElementById('dlCommentsCsv').href = `/api/results/${data.result_id}/download/comments`;
-            document.getElementById('dlCommentersCsv').href = `/api/results/${data.result_id}/download/commenters`;
-            document.getElementById('dlJson').href = `/api/results/${data.result_id}/download/json`;
+            // Stats already set above
+            // Downloads are handled client-side via downloadFile()
 
             // Render comments
             const container = document.getElementById('commentsContainer');
@@ -436,6 +436,39 @@
             
             document.getElementById('btnScrape').disabled = false;
             document.getElementById('btnScrape').innerHTML = '<i class="fas fa-rocket me-2"></i>Scrape';
+        }
+
+        function downloadFile(type) {
+            if (!lastResponseData) return;
+            let b64, filename, mime;
+            if (type === 'comments') {
+                b64 = lastResponseData.comments_csv_b64;
+                filename = `ig_${lastResponseData.shortcode}_comments.csv`;
+                mime = 'text/csv';
+            } else if (type === 'commenters') {
+                b64 = lastResponseData.commenters_csv_b64;
+                filename = `ig_${lastResponseData.shortcode}_commenters.csv`;
+                mime = 'text/csv';
+            } else if (type === 'json') {
+                b64 = lastResponseData.json_b64;
+                filename = `ig_${lastResponseData.shortcode}_full.json`;
+                mime = 'application/json';
+            }
+            if (!b64) { alert('Download data not available. Please scrape again.'); return; }
+            // Decode base64 -> blob -> download
+            const byteChars = atob(b64);
+            const byteNumbers = new Array(byteChars.length);
+            for (let i = 0; i < byteChars.length; i++) byteNumbers[i] = byteChars.charCodeAt(i);
+            const byteArray = new Uint8Array(byteNumbers);
+            const blob = new Blob([byteArray], { type: mime });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
         }
 
         function resetForm() {
