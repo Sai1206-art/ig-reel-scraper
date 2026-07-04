@@ -1,7 +1,7 @@
 """
-Instagram Reel Comment Scraper - Web App (v3 - Smart Filtering)
-Uses Instagram's GraphQL API with session cookies to scrape comments.
-Returns all comments as JSON for client-side smart filtering and CSV generation.
+Instagram Reel Comment Scraper - Web App (v4 - Discover + Scrape)
+Two modes: (1) Discover reels by topic/hashtag, (2) Paste reel URL directly.
+Uses Instagram's GraphQL API with session cookies.
 """
 import io
 import json
@@ -9,6 +9,7 @@ import os
 import re
 import csv
 import time
+import math
 import uuid
 import traceback
 from datetime import datetime, timezone
@@ -19,7 +20,18 @@ import requests
 app = Flask(__name__)
 
 COMMENT_QUERY_HASH = "97b41c52301f77ce508f55e66d17620e"
+HASHTAG_QUERY_HASH = "9b498c08113f1e09617a1703c22b2f32"
 
+IG_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Accept": "application/json",
+    "X-IG-App-ID": "936619743392459",
+}
+
+
+# ============================================================
+# SHARED HELPERS
+# ============================================================
 
 def get_cookies(user_sessionid=None):
     if user_sessionid:
@@ -28,20 +40,24 @@ def get_cookies(user_sessionid=None):
     if cookies_json:
         try:
             return json.loads(cookies_json)
-        except:
+        except Exception:
             pass
     return {}
 
 
 def extract_shortcode(url):
     url = url.strip()
-    match = re.search(r'/reels?/([A-Za-z0-9_-]+)', url)
+    match = re.search(r'/(reel|reels|p)/([A-Za-z0-9_-]+)', url)
     if match:
-        return match.group(1)
+        return match.group(2)
     if re.match(r'^[A-Za-z0-9_-]{5,20}$', url):
         return url
     raise ValueError("Could not extract shortcode from URL")
 
+
+# ============================================================
+# COMMENT SCRAPING (existing, unchanged logic)
+# ============================================================
 
 def fetch_comments_page(shortcode, first=50, after=None, cookies=None):
     if cookies is None:
@@ -57,13 +73,7 @@ def fetch_comments_page(shortcode, first=50, after=None, cookies=None):
         "variables": json.dumps(variables),
     }
 
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept": "application/json",
-        "Referer": f"https://www.instagram.com/reel/{shortcode}/",
-        "X-IG-App-ID": "936619743392459",
-    }
-
+    headers = {**IG_HEADERS, "Referer": f"https://www.instagram.com/reel/{shortcode}/"}
     resp = requests.get(url, params=params, cookies=cookies, headers=headers, timeout=30)
 
     if resp.status_code == 429:
@@ -72,7 +82,6 @@ def fetch_comments_page(shortcode, first=50, after=None, cookies=None):
         raise Exception(f"Instagram returned HTTP {resp.status_code}")
 
     data = resp.json()
-
     if data.get("status") == "fail":
         raise Exception(f"Instagram API error: {data.get('message', 'Unknown error')}")
 
@@ -142,7 +151,6 @@ def scrape_all_comments(shortcode, max_comments=500, cookies=None):
     while True:
         if max_comments and len(all_comments) >= max_comments:
             break
-
         first = min(50, max_comments - len(all_comments)) if max_comments else 50
 
         try:
@@ -179,14 +187,11 @@ def scrape_all_comments(shortcode, max_comments=500, cookies=None):
 
         if not page_info.get("has_next_page") or len(edges) == 0:
             break
-
         end_cursor = page_info.get("end_cursor")
         page += 1
-
         time.sleep(0.5)
 
     total_replies = sum(len(c.get("replies", [])) for c in all_comments)
-
     return {
         "reel": shortcode,
         "comment_count": len(all_comments),
@@ -198,6 +203,209 @@ def scrape_all_comments(shortcode, max_comments=500, cookies=None):
         "errors": errors,
     }
 
+
+# ============================================================
+# REEL DISCOVERY (NEW)
+# ============================================================
+
+def extract_hashtag_candidates(text):
+    """Extract potential hashtag candidates from free text."""
+    text = text.lower().strip()
+    words = re.findall(r'[a-z0-9]+', text)
+    stop = {
+        'in', 'the', 'a', 'an', 'of', 'for', 'and', 'or', 'to', 'from', 'at',
+        'by', 'with', 'about', 'on', 'is', 'are', 'was', 'were', 'be', 'been',
+        'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would',
+        'could', 'should', 'can', 'this', 'that', 'these', 'those', 'i', 'you',
+        'he', 'she', 'it', 'we', 'they', 'my', 'your', 'his', 'her', 'its',
+        'our', 'their', 'want', 'need', 'find', 'show', 'get', 'looking',
+        'me', 'some', 'any', 'all', 'most', 'more', 'less', 'very', 'too',
+        'so', 'just', 'only', 'also', 'but', 'not', 'no', 'yes', 'like',
+        'where', 'what', 'when', 'how', 'who', 'which', 'why',
+    }
+    words = [w for w in words if w not in stop and len(w) >= 2]
+
+    candidates = []
+    seen = set()
+
+    def add(w):
+        if w not in seen and 2 <= len(w) <= 30:
+            seen.add(w)
+            candidates.append(w)
+
+    # Most specific first: all words joined
+    if len(words) >= 2:
+        add(''.join(words))
+    # Triples
+    for i in range(len(words) - 2):
+        add(words[i] + words[i + 1] + words[i + 2])
+    # Pairs
+    for i in range(len(words) - 1):
+        add(words[i] + words[i + 1])
+    # Singles
+    for w in words:
+        add(w)
+
+    return candidates
+
+
+def fetch_hashtag_media_graphql(tag_name, cookies, first=50):
+    """Fetch hashtag top posts + recent media via GraphQL, return video/reel items only."""
+    variables = {"tag_name": tag_name, "first": first}
+    url = f"https://www.instagram.com/graphql/query/?query_hash={HASHTAG_QUERY_HASH}"
+    params = {
+        "query_hash": HASHTAG_QUERY_HASH,
+        "variables": json.dumps(variables),
+    }
+    headers = {**IG_HEADERS, "Referer": f"https://www.instagram.com/explore/tags/{tag_name}/"}
+
+    try:
+        resp = requests.get(url, params=params, cookies=cookies, headers=headers, timeout=20)
+    except Exception:
+        return []
+
+    if resp.status_code != 200:
+        return []
+
+    try:
+        data = resp.json()
+    except Exception:
+        return []
+
+    hashtag = (data.get("data") or {}).get("hashtag")
+    if not hashtag:
+        return []
+
+    reels = []
+    seen = set()
+
+    # Collect from top posts AND recent media
+    for edge_key in ("edge_hashtag_to_top_posts", "edge_hashtag_to_media"):
+        edges = hashtag.get(edge_key, {}).get("edges", [])
+        for edge in edges:
+            node = edge.get("node", {})
+            shortcode = node.get("shortcode", "")
+            if not shortcode or shortcode in seen:
+                continue
+
+            # Only include video content (reels)
+            if not node.get("is_video", False):
+                continue
+
+            seen.add(shortcode)
+
+            caption_edges = node.get("edge_media_to_caption", {}).get("edges", [])
+            caption_text = caption_edges[0]["node"]["text"] if caption_edges else ""
+            owner = node.get("owner", {})
+
+            taken_ts = node.get("taken_at_timestamp", 0)
+            taken_iso = datetime.fromtimestamp(taken_ts, tz=timezone.utc).isoformat() if taken_ts else ""
+
+            reels.append({
+                "shortcode": shortcode,
+                "caption": caption_text[:400],
+                "username": owner.get("username", ""),
+                "full_name": owner.get("full_name", ""),
+                "profile_pic_url": owner.get("profile_pic_url", ""),
+                "like_count": node.get("edge_liked_by", {}).get("count", 0),
+                "comment_count": node.get("edge_media_to_comment", {}).get("count", 0),
+                "play_count": node.get("video_view_count", 0),
+                "taken_at": taken_ts,
+                "taken_at_iso": taken_iso,
+                "thumbnail_url": node.get("display_url") or node.get("thumbnail_src", ""),
+                "reel_url": f"https://www.instagram.com/reel/{shortcode}/",
+                "hashtag": tag_name,
+            })
+
+    return reels
+
+
+@app.route("/api/discover", methods=["POST"])
+def discover():
+    """Search Instagram for reels by topic/hashtag. Returns ranked reel suggestions."""
+    data = request.json or {}
+    query = data.get("query", "").strip()
+    hashtags_input = data.get("hashtags", "").strip()
+    sessionid = data.get("sessionid", "").strip()
+
+    if not sessionid:
+        return jsonify({"error": "Instagram session ID is required."}), 400
+    if not query and not hashtags_input:
+        return jsonify({"error": "Please describe what you're looking for or enter hashtags."}), 400
+
+    cookies = get_cookies(sessionid)
+
+    # --- Build hashtag list ---
+    tags_to_search = []
+
+    # 1. User-provided explicit hashtags
+    if hashtags_input:
+        for h in re.split(r'[,\s]+', hashtags_input):
+            h = h.strip().lstrip('#').lower()
+            if h and h not in tags_to_search:
+                tags_to_search.append(h)
+
+    # 2. Extract candidates from free text query
+    if query:
+        candidates = extract_hashtag_candidates(query)
+        for cand in candidates[:8]:
+            if cand not in tags_to_search:
+                tags_to_search.append(cand)
+
+    # Limit to 5 hashtags to stay within timeout
+    tags_to_search = tags_to_search[:5]
+
+    if not tags_to_search:
+        return jsonify({"error": "Could not determine hashtags from your query. Try entering hashtags manually."}), 200
+
+    # --- Fetch reels for each hashtag ---
+    all_reels = []
+    seen_codes = set()
+    hashtags_used = []
+
+    for tag in tags_to_search:
+        reels = fetch_hashtag_media_graphql(tag, cookies)
+        if reels:
+            hashtags_used.append(tag)
+        for r in reels:
+            if r["shortcode"] not in seen_codes:
+                seen_codes.add(r["shortcode"])
+                all_reels.append(r)
+        time.sleep(0.4)
+
+    if not all_reels:
+        return jsonify({
+            "hashtags_searched": tags_to_search,
+            "total_found": 0,
+            "reels": [],
+            "message": "No reels found for these hashtags. Try different keywords or check your session ID.",
+        })
+
+    # --- Score and rank (mix of likes, comments, recency) ---
+    max_likes = max((r["like_count"] for r in all_reels), default=1) or 1
+    max_comments = max((r["comment_count"] for r in all_reels), default=1) or 1
+    now = time.time()
+
+    for r in all_reels:
+        likes_norm = math.log10(r["like_count"] + 1) / math.log10(max_likes + 1)
+        comments_norm = math.log10(r["comment_count"] + 1) / math.log10(max_comments + 1)
+        days_old = max(0, (now - r["taken_at"]) / 86400) if r["taken_at"] else 365
+        recency = math.exp(-days_old / 60)  # ~60-day half-life
+        r["score"] = round(0.3 * likes_norm + 0.4 * comments_norm + 0.3 * recency, 4)
+
+    all_reels.sort(key=lambda x: x["score"], reverse=True)
+    top_reels = all_reels[:25]
+
+    return jsonify({
+        "hashtags_searched": hashtags_used or tags_to_search,
+        "total_found": len(all_reels),
+        "reels": top_reels,
+    })
+
+
+# ============================================================
+# ROUTES
+# ============================================================
 
 @app.route("/")
 def index():
@@ -230,7 +438,6 @@ def scrape():
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
-    # Build compact comment list for client-side processing
     comments_out = []
     for c in result["comments"]:
         replies_out = []
@@ -257,7 +464,6 @@ def scrape():
             "replies": replies_out,
         })
 
-    # Build commenters list
     commenters_out = []
     seen = set()
     for c in result["unique_commenters"]:

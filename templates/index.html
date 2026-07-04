@@ -27,6 +27,10 @@
         .alert-setup { border-left: 4px solid #0d6efd; }
         .pulse-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #dc2743; animation: pulse 1.5s infinite; }
         @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+        .mode-tabs { border-bottom: 2px solid #dbdbdb; margin-bottom: 20px; }
+        .mode-tab { padding: 12px 24px; border: none; background: none; color: #8e8e8e; font-weight: 600; cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.2s; }
+        .mode-tab:hover { color: #262626; }
+        .mode-tab.active { color: #dc2743; border-bottom-color: #dc2743; }
         .cat-btn { cursor: pointer; transition: all 0.2s; }
         .cat-btn:hover { transform: translateY(-1px); }
         .cat-btn.active { box-shadow: 0 0 0 3px rgba(220,39,67,0.25); border-color: #dc2743 !important; }
@@ -44,6 +48,18 @@
         .custom-kw { display: inline-flex; align-items: center; background: #d4edda; color: #155724; border-radius: 16px; padding: 3px 10px; margin: 2px; font-size: 0.8em; }
         .custom-kw .remove { cursor: pointer; margin-left: 6px; font-weight: bold; }
         .section-divider { border-top: 1px solid #eee; margin: 12px 0; }
+        .reel-card { border: 1px solid #dbdbdb; border-radius: 10px; overflow: hidden; transition: all 0.2s; background: #fff; height: 100%; }
+        .reel-card:hover { box-shadow: 0 6px 20px rgba(0,0,0,0.12); transform: translateY(-2px); }
+        .reel-thumb { position: relative; width: 100%; height: 280px; object-fit: cover; background: #f0f0f0; }
+        .reel-thumb-overlay { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(transparent, rgba(0,0,0,0.7)); padding: 15px 10px 8px; }
+        .reel-thumb-badge { position: absolute; top: 8px; right: 8px; background: rgba(220,39,67,0.9); color: white; border-radius: 4px; padding: 2px 8px; font-size: 0.75em; font-weight: 600; }
+        .reel-body { padding: 12px; }
+        .reel-caption { font-size: 0.88rem; color: #555; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; min-height: 38px; }
+        .reel-stats { display: flex; gap: 12px; font-size: 0.8rem; color: #8e8e8e; }
+        .reel-stat-item { display: flex; align-items: center; gap: 4px; }
+        .comments-scroll { max-height: 700px; overflow-y: auto; padding-right: 10px; }
+        .comments-scroll::-webkit-scrollbar { width: 6px; }
+        .comments-scroll::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
     </style>
 </head>
 <body>
@@ -51,64 +67,172 @@
     <nav class="navbar navbar-expand-lg sticky-top mb-4">
         <div class="container">
             <a class="navbar-brand fs-4" href="#"><i class="fab fa-instagram me-2"></i>Reel Scraper</a>
-            <span class="navbar-text"><span class="badge bg-dark">v3.1 Smart Filter</span></span>
+            <span class="navbar-text"><span class="badge bg-dark">v4.0 Discover</span></span>
         </div>
     </nav>
 
     <div class="container">
-        <!-- Setup Warning -->
+
+        <!-- Setup Info -->
         <div class="alert alert-info alert-setup mb-4" role="alert">
             <div class="d-flex">
                 <div class="me-3 fs-3 text-info"><i class="fas fa-info-circle"></i></div>
-                <div>
+                <div class="flex-grow-1">
                     <h5 class="alert-heading fw-bold">How to use</h5>
-                    <p class="mb-1">1. Paste your Instagram Reel URL + <code>sessionid</code> cookie below.</p>
-                    <p class="mb-1">2. Click Scrape — comments are fetched, auto-categorized, and patterns detected.</p>
-                    <p class="mb-1">3. Filter by clicking categories, detected patterns, or typing your own keywords.</p>
-                    <p class="mb-0">4. Download all or filtered comments as CSV.</p>
-                    <p class="mb-0 small text-muted mt-2"><strong>Get your sessionid:</strong> Instagram in browser → log in → <kbd>⌘+⌥+I</kbd> (Mac) or <kbd>F12</kbd> (Windows) → Application → Cookies → instagram.com → copy <code>sessionid</code> value.</p>
+                    <p class="mb-1"><strong>Discover mode:</strong> Describe what you're looking for, get reel suggestions, pick one, scrape its comments.</p>
+                    <p class="mb-1"><strong>Direct mode:</strong> Paste a reel URL directly and scrape.</p>
+                    <p class="mb-0 small text-muted mt-2"><strong>Get your sessionid:</strong> Instagram in browser, log in, press <kbd>Cmd+Option+I</kbd> (Mac) or <kbd>F12</kbd> (Windows), Application tab, Cookies, instagram.com, copy the <code>sessionid</code> value.</p>
                 </div>
             </div>
         </div>
 
-        <!-- Scraper Input Form -->
-        <div class="row">
-            <div class="col-lg-12 mb-4">
-                <div class="card p-4">
-                    <h4 class="fw-bold mb-3"><i class="fas fa-search me-2 text-danger"></i>Scrape Reel Comments</h4>
-                    <form id="scrapeForm" class="row g-3">
-                        <div class="col-md-12">
-                            <label class="form-label fw-bold small">Instagram Reel URL</label>
-                            <div class="input-group">
-                                <span class="input-group-text bg-white border-end-0 text-muted"><i class="fas fa-link"></i></span>
-                                <input type="text" class="form-control border-start-0 ps-0" id="reelUrl" placeholder="https://www.instagram.com/reel/..." required>
+        <!-- Mode Tabs -->
+        <div class="mode-tabs d-flex">
+            <button class="mode-tab active" data-mode="discover" onclick="switchMode('discover')"><i class="fas fa-compass me-2"></i>Discover Reels</button>
+            <button class="mode-tab" data-mode="direct" onclick="switchMode('direct')"><i class="fas fa-link me-2"></i>Paste Reel URL</button>
+        </div>
+
+        <!-- ==================== DISCOVER MODE ==================== -->
+        <div id="discoverMode">
+            <div class="row mb-3">
+                <div class="col-12">
+                    <div class="card p-3">
+                        <div class="row align-items-end g-2">
+                            <div class="col-md-12">
+                                <label class="form-label fw-bold small mb-1">Instagram Session ID <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-white border-end-0 text-muted"><i class="fas fa-key"></i></span>
+                                    <input type="password" class="form-control border-start-0 ps-0" id="sessionIdDiscover" placeholder="Paste your sessionid cookie value...">
+                                </div>
                             </div>
                         </div>
-                        <div class="col-md-7">
-                            <label class="form-label fw-bold small">Instagram Session ID <span class="text-muted">(required)</span></label>
-                            <div class="input-group">
-                                <span class="input-group-text bg-white border-end-0 text-muted"><i class="fas fa-key"></i></span>
-                                <input type="password" class="form-control border-start-0 ps-0" id="sessionId" placeholder="Paste your sessionid cookie value..." required>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card p-4">
+                        <h4 class="fw-bold mb-3"><i class="fas fa-search me-2 text-danger"></i>Find Reels to Scrape</h4>
+                        <p class="text-muted small mb-3">Describe what you're looking for in your own words, or enter hashtags directly. We'll search Instagram and find the best reels for lead generation.</p>
+                        <form id="discoverForm" class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">What are you looking for? <span class="text-muted">(natural language)</span></label>
+                                <textarea class="form-control" id="discoverQuery" rows="2" placeholder="e.g., real estate investing tips where people ask about property details, or fitness influencers promoting supplements where people comment interested..."></textarea>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">Hashtags <span class="text-muted">(optional, overrides auto-detection)</span></label>
+                                <textarea class="form-control" id="discoverHashtags" rows="2" placeholder="e.g., #realestate #investing #fitness (comma or space separated)"></textarea>
+                            </div>
+                            <div class="col-12 d-grid">
+                                <button type="submit" class="btn btn-gradient" id="btnDiscover"><i class="fas fa-rocket me-2"></i>Find Reels</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Discover Processing -->
+            <div class="row d-none" id="discoverProcessing">
+                <div class="col-12 mb-4"><div class="card p-4">
+                    <div class="spinner-container">
+                        <div class="spinner-border text-danger mb-3" style="width: 3rem; height: 3rem;" role="status"></div>
+                        <h4 class="fw-bold"><span class="pulse-dot me-2"></span>Searching Instagram</h4>
+                        <p class="text-muted text-center">Fetching reels from hashtags... This takes 10-20 seconds.</p>
+                    </div>
+                </div></div>
+            </div>
+
+            <!-- Discover Error -->
+            <div class="row d-none" id="discoverError">
+                <div class="col-12 mb-4"><div class="card p-4 border-danger">
+                    <div class="d-flex align-items-center text-danger mb-3"><i class="fas fa-times-circle fs-3 me-3"></i><h4 class="fw-bold mb-0">Search Failed</h4></div>
+                    <div class="alert alert-danger" id="discoverErrorDetails">Something went wrong.</div>
+                    <button class="btn btn-outline-danger" onclick="resetDiscover()"><i class="fas fa-arrow-left me-2"></i>Try Again</button>
+                </div></div>
+            </div>
+
+            <!-- Discover Results -->
+            <div class="row d-none" id="discoverResults">
+                <div class="col-12 mb-4">
+                    <div class="card p-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                            <div>
+                                <h4 class="fw-bold mb-0"><i class="fas fa-list-check me-2 text-success"></i>Reel Suggestions</h4>
+                                <small class="text-muted" id="discoverMeta"></small>
+                            </div>
+                            <div class="d-flex gap-2 align-items-center flex-wrap">
+                                <select class="form-select form-select-sm" id="sortBy" style="width:auto" onchange="renderReelGrid()">
+                                    <option value="score">Best Match</option>
+                                    <option value="comment_count">Most Comments</option>
+                                    <option value="like_count">Most Likes</option>
+                                    <option value="play_count">Most Views</option>
+                                    <option value="taken_at">Most Recent</option>
+                                    <option value="username">Creator (A-Z)</option>
+                                </select>
+                                <button class="btn btn-sm btn-outline-secondary" onclick="resetDiscover()"><i class="fas fa-redo me-2"></i>New Search</button>
                             </div>
                         </div>
-                        <div class="col-md-2">
-                            <label class="form-label fw-bold small">Max Comments</label>
-                            <input type="number" class="form-control" id="maxComments" value="500" min="1" max="10000">
+                        <div class="row mb-3 g-2">
+                            <div class="col-md-4">
+                                <label class="form-label small mb-0 text-muted">Min Comments</label>
+                                <input type="number" class="form-control form-control-sm" id="filterMinComments" placeholder="0" min="0" oninput="renderReelGrid()">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small mb-0 text-muted">Min Likes</label>
+                                <input type="number" class="form-control form-control-sm" id="filterMinLikes" placeholder="0" min="0" oninput="renderReelGrid()">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small mb-0 text-muted">Creator Search</label>
+                                <input type="text" class="form-control form-control-sm" id="filterCreator" placeholder="@username" oninput="renderReelGrid()">
+                            </div>
                         </div>
-                        <div class="col-md-3 d-grid">
-                            <label class="form-label fw-bold small">&nbsp;</label>
-                            <button type="submit" class="btn btn-gradient" id="btnScrape"><i class="fas fa-rocket me-2"></i>Scrape</button>
-                        </div>
-                    </form>
+                        <div class="row g-3" id="reelGrid"></div>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- Processing -->
+        <!-- ==================== DIRECT MODE ==================== -->
+        <div id="directMode" class="d-none">
+            <div class="row">
+                <div class="col-12 mb-4">
+                    <div class="card p-4">
+                        <h4 class="fw-bold mb-3"><i class="fas fa-link me-2 text-danger"></i>Scrape by Reel URL</h4>
+                        <form id="scrapeForm" class="row g-3">
+                            <div class="col-md-12">
+                                <label class="form-label fw-bold small">Instagram Reel URL</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-white border-end-0 text-muted"><i class="fas fa-link"></i></span>
+                                    <input type="text" class="form-control border-start-0 ps-0" id="reelUrl" placeholder="https://www.instagram.com/reel/..." required>
+                                </div>
+                            </div>
+                            <div class="col-md-7">
+                                <label class="form-label fw-bold small">Instagram Session ID <span class="text-muted">(required)</span></label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-white border-end-0 text-muted"><i class="fas fa-key"></i></span>
+                                    <input type="password" class="form-control border-start-0 ps-0" id="sessionId" placeholder="Paste your sessionid cookie value..." required>
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label fw-bold small">Max Comments</label>
+                                <input type="number" class="form-control" id="maxComments" value="500" min="1" max="10000">
+                            </div>
+                            <div class="col-md-3 d-grid">
+                                <label class="form-label fw-bold small">&nbsp;</label>
+                                <button type="submit" class="btn btn-gradient" id="btnScrape"><i class="fas fa-rocket me-2"></i>Scrape</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== SCRAPE PROCESSING ==================== -->
         <div class="row d-none" id="processingState">
             <div class="col-12 mb-4"><div class="card p-4">
                 <div class="spinner-container">
-                    <div class="spinner-border text-danger mb-3" style="width: 3rem; height: 3rem;" role="status"><span class="visually-hidden">Loading...</span></div>
+                    <div class="spinner-border text-danger mb-3" style="width: 3rem; height: 3rem;" role="status"></div>
                     <h4 class="fw-bold"><span class="pulse-dot me-2"></span>Scraping Comments</h4>
                     <p class="text-muted text-center">Fetching comments from Instagram... This may take 10-30 seconds.</p>
                     <div class="progress-container col-md-6"><div class="progress-bar-custom" id="progressBar" style="width: 30%;"></div></div>
@@ -117,18 +241,17 @@
             </div></div>
         </div>
 
-        <!-- Error -->
+        <!-- ==================== SCRAPE ERROR ==================== -->
         <div class="row d-none" id="errorState">
             <div class="col-12 mb-4"><div class="card p-4 border-danger">
                 <div class="d-flex align-items-center text-danger mb-3"><i class="fas fa-times-circle fs-3 me-3"></i><h4 class="fw-bold mb-0">Scrape Failed</h4></div>
                 <div class="alert alert-danger" id="errorDetails">Something went wrong.</div>
-                <button class="btn btn-outline-danger" onclick="resetForm()"><i class="fas fa-arrow-left me-2"></i>Try Another Reel</button>
+                <button class="btn btn-outline-danger" onclick="resetForm()"><i class="fas fa-arrow-left me-2"></i>Try Again</button>
             </div></div>
         </div>
 
-        <!-- Results -->
+        <!-- ==================== SCRAPE RESULTS ==================== -->
         <div class="row d-none" id="resultsState">
-            <!-- Left Sidebar -->
             <div class="col-lg-4 mb-4">
                 <div class="card p-4 h-100">
                     <div>
@@ -140,37 +263,27 @@
                             <div class="col-6"><div class="stats-box"><div class="stats-num" id="statReported">0</div><div class="stats-label">Total on Reel</div></div></div>
                         </div>
                     </div>
-
-                    <!-- Smart Categories -->
                     <div class="mb-3">
                         <h6 class="fw-bold mb-2"><i class="fas fa-magic me-1 text-primary"></i>Smart Categories</h6>
                         <div id="categoryGrid" class="row g-2"></div>
                         <p class="small text-muted mt-1 mb-0">Auto-detected from comment content</p>
                     </div>
-
                     <div class="section-divider"></div>
-
-                    <!-- Detected Patterns -->
                     <div class="mb-3">
                         <h6 class="fw-bold mb-2"><i class="fas fa-wand-magic-sparkles me-1 text-success"></i>Detected Patterns</h6>
                         <div id="detectedPatternsList"></div>
-                        <p class="small text-muted mt-1 mb-0">Common words & phrases found in this reel's comments</p>
+                        <p class="small text-muted mt-1 mb-0">Common words and phrases found in comments</p>
                     </div>
-
                     <div class="section-divider"></div>
-
-                    <!-- Custom Keywords -->
                     <div class="mb-3">
                         <h6 class="fw-bold mb-2"><i class="fas fa-tags me-1 text-warning"></i>Custom Keywords</h6>
                         <div class="input-group input-group-sm mb-2">
-                            <input type="text" class="form-control" id="customKeywordInput" placeholder="Type a word & press Enter (e.g. YES, send, 🎯)">
+                            <input type="text" class="form-control" id="customKeywordInput" placeholder="Type a word and press Enter">
                             <button class="btn btn-outline-warning" type="button" onclick="addCustomKeyword()"><i class="fas fa-plus"></i></button>
                         </div>
                         <div id="customKeywordsList"></div>
-                        <p class="small text-muted mt-1 mb-0">Add your own filter keywords for any pattern</p>
+                        <p class="small text-muted mt-1 mb-0">Add your own filter keywords</p>
                     </div>
-
-                    <!-- Downloads -->
                     <div class="mt-auto pt-3">
                         <div class="section-divider"></div>
                         <h6 class="fw-bold mb-2"><i class="fas fa-download me-2"></i>Download</h6>
@@ -181,14 +294,12 @@
                             <button type="button" class="btn btn-outline-secondary btn-sm" onclick="downloadCSV('json', 'all')"><i class="fas fa-file-code me-2"></i>Full JSON Export</button>
                         </div>
                     </div>
-
                     <div class="mt-3">
                         <button class="btn btn-gradient w-100" onclick="resetForm()"><i class="fas fa-redo me-2"></i>Scrape Another Reel</button>
                     </div>
                 </div>
             </div>
 
-            <!-- Right: Comments -->
             <div class="col-lg-8 mb-4">
                 <div class="card p-4 h-100">
                     <div class="mb-3">
@@ -206,28 +317,40 @@
                             <button class="btn btn-sm btn-outline-secondary" id="clearFiltersBtn" onclick="clearAllFilters()" style="display:none"><i class="fas fa-times me-1"></i>Clear Filters</button>
                         </div>
                     </div>
-                    <div style="max-height: 700px; overflow-y: auto; padding-right: 10px;" id="commentsContainer"></div>
+                    <div class="comments-scroll" id="commentsContainer"></div>
                 </div>
             </div>
         </div>
 
         <footer class="text-center py-4 text-muted mt-5 border-top">
-            <p class="mb-0">Built with <i class="fas fa-heart text-danger"></i> for Sai Sankeerth • v3.1 Smart Filter • Powered by GraphQL & Flask</p>
+            <p class="mb-0">Built with <i class="fas fa-heart text-danger"></i> for Sai Sankeerth &bull; v4.0 Discover &bull; Powered by GraphQL and Flask</p>
         </footer>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        let ALL_COMMENTS = [];
-        let ALL_COMMENTERS = [];
-        let SHORTCODE = '';
-        let activeCategory = null;
-        let activeKeyword = '';
-        let activePatternFilters = [];
-        let customKeywords = [];
+        // ==================== GLOBAL STATE ====================
+        var ALL_COMMENTS = [];
+        var ALL_COMMENTERS = [];
+        var SHORTCODE = '';
+        var activeCategory = null;
+        var activeKeyword = '';
+        var activePatternFilters = [];
+        var customKeywords = [];
+        var DISCOVERED_REELS = [];
+        var currentMode = 'discover';
 
-        // === BUILT-IN CATEGORIES ===
-        const CATEGORIES = {
+        // ==================== MODE SWITCHING ====================
+        function switchMode(mode) {
+            currentMode = mode;
+            document.querySelectorAll('.mode-tab').forEach(function(t) { t.classList.remove('active'); });
+            document.querySelector('[data-mode="' + mode + '"]').classList.add('active');
+            document.getElementById('discoverMode').classList.toggle('d-none', mode !== 'discover');
+            document.getElementById('directMode').classList.toggle('d-none', mode !== 'direct');
+        }
+
+        // ==================== CATEGORIES ====================
+        var CATEGORIES = {
             dm_request: { label: 'DM Requests', icon: 'fa-envelope', color: '#dc2743', patterns: [/\bdm\b/i, /\bdm\s*me\b/i, /\bsend\s*dm\b/i, /\bdm\s*pl(s|ease)?\b/i, /\bcheck\s*dm\b/i, /\bdmmed\b/i, /\bdm'd\b/i, /\binbox\b/i, /\bping\s*me\b/i] },
             interested: { label: 'Interested', icon: 'fa-thumbs-up', color: '#28a745', patterns: [/\binterest/i, /\bwant\b/i, /\bneed\b/i, /\bhow\s*much\b/i, /\bprice\b/i, /\bwhere\s*(can|to)\b/i, /\bget\s*this\b/i, /\bwhere\s*from\b/i] },
             done: { label: 'Done / Participated', icon: 'fa-check-double', color: '#007bff', patterns: [/\bdone\b/i, /\bcompleted\b/i, /\bfinished\b/i, /\bsubmitted\b/i, /\bshared\b/i, /\bposted\b/i, /\buploaded\b/i, /\bparticipated\b/i] },
@@ -235,110 +358,185 @@
             tagged: { label: 'Tagged Others', icon: 'fa-at', color: '#6f42c1', patterns: [/@\w+/] },
             link_share: { label: 'Link / URL', icon: 'fa-link', color: '#fd7e14', patterns: [/https?:\/\//, /\bwww\./i, /\.com\b/i, /\.in\b/i] },
             emoji_only: { label: 'Emoji Only', icon: 'fa-face-smile', color: '#e83e8c', patterns: [/^[\s\p{Emoji}\p{Emoji_Presentation}\p{Emoji_Modifier}\p{Emoji_Component}]+$/u] },
-            positive: { label: 'Positive / Praise', icon: 'fa-heart', color: '#e056fd', patterns: [/\blove\b/i, /\bawesome\b/i, /\bgreat\b/i, /\bnice\b/i, /\bamazing\b/i, /\bwow\b/i, /\bcool\b/i, /\bsuper\b/i, /\b🔥/i, /\b❤/i, /\b😍/i] },
+            positive: { label: 'Positive / Praise', icon: 'fa-heart', color: '#e056fd', patterns: [/\blove\b/i, /\bawesome\b/i, /\bgreat\b/i, /\bnice\b/i, /\bamazing\b/i, /\bwow\b/i, /\bcool\b/i, /\bsuper\b/i, /\ud83d\udd25/i, /\u2764/i, /\ud83d\ude0d/i] },
         };
-
-        // Stop words to filter out when detecting patterns
-        const STOP_WORDS = new Set(['the','a','an','is','are','was','were','be','been','being','have','has','had','do','does','did','will','would','could','should','may','might','must','can','this','that','these','those','i','you','he','she','it','we','they','what','which','who','when','where','why','how','all','each','every','both','few','more','most','other','some','such','no','nor','not','only','own','same','so','than','too','very','just','but','for','and','or','nor','on','in','at','to','from','up','about','into','through','during','before','after','above','below','between','of','off','over','under','again','further','then','once','here','there','my','your','his','her','its','our','their','me','him','us','them','am','if','because','as','until','while','with','by','my','your','pls','please','plz','bro','brother','sis','sir','mam','maam','ok','okay','yeah','yes','no','like','get','got','want','one','also','even','still','back','out','up','down','go','going','gone','much','really','so','too','very','well','good','bad','best','better','see','seen','look','say','said','tell','told','ask','make','made','take','took','come','came','give','gave','keep','let','put','run','seem','show','turn','use','way','day','time','year','man','woman','guy','girl','kid','baby','people','person','thing','stuff','lot','bit','kind','sort','type','part','place','case','point','fact','number','side','line','end','start','begin','work','job','play','game','life','world','home','family','friend','friends','school','class','college','work','office','team','group','money','food','water','light','dark','color','sound','music','song','video','movie','film','book','story','word','name','title','page','site','link','app','phone','screen','button','click','type','send','post','share','follow','like','comment','message','dm','inbox','chat','call','text','email','mail','address','street','city','state','country','world','india','usa','uk']);
 
         function categorizeComment(text) {
             if (!text) return [];
-            const cats = [];
-            for (const [key, def] of Object.entries(CATEGORIES)) {
-                for (const p of def.patterns) {
-                    if (p.test(text)) { cats.push(key); break; }
+            var cats = [];
+            for (var key in CATEGORIES) {
+                var def = CATEGORIES[key];
+                for (var i = 0; i < def.patterns.length; i++) {
+                    if (def.patterns[i].test(text)) { cats.push(key); break; }
                 }
             }
             return cats.length ? cats : ['other'];
         }
 
-        // === SMART PATTERN DETECTION ===
-        // Analyzes all comments and finds common words/phrases actually used
+        var STOP_WORDS = new Set(['the','a','an','is','are','was','were','be','been','being','have','has','had','do','does','did','will','would','could','should','may','might','must','can','this','that','these','those','i','you','he','she','it','we','they','what','which','who','when','where','why','how','all','each','every','both','few','more','most','other','some','such','no','nor','not','only','own','same','so','than','too','very','just','but','for','and','or','on','in','at','to','from','up','about','into','through','during','before','after','above','below','between','of','off','over','under','again','further','then','once','here','there','my','your','his','her','its','our','their','me','him','us','them','am','if','because','as','until','while','with','by','pls','please','plz','bro','brother','sis','sir','mam','maam','ok','okay','yeah','yes','no','like','get','got','want','one','also','even','still','back','out','down','go','going','gone','much','really','well','good','bad','best','better','see','seen','look','say','said','tell','told','ask','make','made','take','took','come','came','give','gave','keep','let','put','run','seem','show','turn','use','way','day','time','year','man','woman','guy','girl','kid','baby','people','person','thing','stuff','lot','bit','kind','sort','type','part','place','case','point','fact','number','side','line','end','start','begin','work','job','play','game','life','world','home','family','friend','friends','school','class','college','office','team','group','money','food','water','light','dark','color','sound','music','song','video','movie','film','book','story','word','name','title','page','site','link','app','phone','screen','button','click','send','post','share','follow','comment','message','dm','inbox','chat','call','text','email','mail','address','street','city','state','country','india','usa']);
+
         function detectPatterns() {
-            const wordFreq = {};
-            const phraseFreq = {}; // 2-3 word phrases
-            const shortCommentFreq = {}; // exact short comments
-
-            ALL_COMMENTS.forEach(c => {
-                const text = (c.text || '').trim().toLowerCase();
+            var wordFreq = {}, phraseFreq = {}, shortCommentFreq = {};
+            ALL_COMMENTS.forEach(function(c) {
+                var text = (c.text || '').trim().toLowerCase();
                 if (!text || text.length > 100) return;
-
-                // Track exact short comments (≤4 words)
-                const wordCount = text.split(/\s+/).length;
+                var wordCount = text.split(/\s+/).length;
                 if (wordCount <= 4 && text.length >= 2) {
-                    const clean = text.replace(/[!?.]+$/,'').trim();
-                    if (clean.length >= 2) {
-                        shortCommentFreq[clean] = (shortCommentFreq[clean] || 0) + 1;
-                    }
+                    var clean = text.replace(/[!?.]+$/,'').trim();
+                    if (clean.length >= 2) shortCommentFreq[clean] = (shortCommentFreq[clean] || 0) + 1;
                 }
-
-                // Track individual significant words
-                const words = text.replace(/[^\w\s\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}]/gu, '').split(/\s+/);
-                words.forEach(w => {
-                    if (w.length >= 2 && !STOP_WORDS.has(w) && !/^\d+$/.test(w)) {
-                        wordFreq[w] = (wordFreq[w] || 0) + 1;
-                    }
+                var words = text.replace(/[^\w\s\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}]/gu, '').split(/\s+/);
+                words.forEach(function(w) {
+                    if (w.length >= 2 && !STOP_WORDS.has(w) && !/^\d+$/.test(w)) wordFreq[w] = (wordFreq[w] || 0) + 1;
                 });
-
-                // Track 2-word phrases
-                for (let i = 0; i < words.length - 1; i++) {
-                    const w1 = words[i], w2 = words[i+1];
+                for (var i = 0; i < words.length - 1; i++) {
+                    var w1 = words[i], w2 = words[i+1];
                     if (w1.length >= 2 && w2.length >= 2 && !STOP_WORDS.has(w1) && !STOP_WORDS.has(w2)) {
-                        const phrase = w1 + ' ' + w2;
+                        var phrase = w1 + ' ' + w2;
                         phraseFreq[phrase] = (phraseFreq[phrase] || 0) + 1;
                     }
                 }
             });
-
-            // Merge: prioritize short exact comments, then single words, then phrases
-            const allPatterns = [];
-
-            // Short exact comments (most useful — "dm", "done", "yes", "send link")
-            for (const [text, count] of Object.entries(shortCommentFreq)) {
-                if (count >= 3) allPatterns.push({ text, count, type: 'exact' });
+            var allPatterns = [];
+            for (var text in shortCommentFreq) { if (shortCommentFreq[text] >= 3) allPatterns.push({ text: text, count: shortCommentFreq[text] }); }
+            var shortCommentWords = new Set(Object.keys(shortCommentFreq));
+            for (var word in wordFreq) {
+                if (wordFreq[word] >= 5 && !shortCommentWords.has(word)) allPatterns.push({ text: word, count: wordFreq[word] });
             }
-            // Single words not already covered by short comments
-            const shortCommentWords = new Set(Object.keys(shortCommentFreq));
-            for (const [word, count] of Object.entries(wordFreq)) {
-                if (count >= 5 && !shortCommentWords.has(word)) {
-                    allPatterns.push({ text: word, count, type: 'word' });
-                }
-            }
-            // 2-word phrases
-            for (const [phrase, count] of Object.entries(phraseFreq)) {
-                if (count >= 3) {
-                    allPatterns.push({ text: phrase, count, type: 'phrase' });
-                }
-            }
-
-            // Sort by count desc, then alphabetically
-            allPatterns.sort((a, b) => b.count - a.count || a.text.localeCompare(b.text));
-
-            // Deduplicate: remove patterns that are substrings of a higher-count pattern
-            const seen = new Set();
-            const filtered = [];
-            for (const p of allPatterns) {
-                let isSub = false;
-                for (const s of seen) {
-                    if (s !== p.text && s.includes(p.text) && p.text.split(' ').length < s.split(' ').length) {
-                        isSub = true; break;
-                    }
-                }
-                if (!isSub) {
-                    seen.add(p.text);
-                    filtered.push(p);
-                }
+            for (var phrase in phraseFreq) { if (phraseFreq[phrase] >= 3) allPatterns.push({ text: phrase, count: phraseFreq[phrase] }); }
+            allPatterns.sort(function(a, b) { return b.count - a.count || a.text.localeCompare(b.text); });
+            var seen = new Set(), filtered = [];
+            for (var i = 0; i < allPatterns.length; i++) {
+                var p = allPatterns[i];
+                var isSub = false;
+                seen.forEach(function(s) {
+                    if (s !== p.text && s.includes(p.text) && p.text.split(' ').length < s.split(' ').length) isSub = true;
+                });
+                if (!isSub) { seen.add(p.text); filtered.push(p); }
                 if (filtered.length >= 15) break;
             }
             return filtered;
         }
 
-        // === SCRAPE ===
+        // ==================== DISCOVER ====================
+        document.getElementById('discoverForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            var query = document.getElementById('discoverQuery').value.trim();
+            var hashtags = document.getElementById('discoverHashtags').value.trim();
+            var sessionid = document.getElementById('sessionIdDiscover').value.trim();
+            if (!sessionid) { showDiscoverError('Please enter your Instagram session ID.'); return; }
+            if (!query && !hashtags) { showDiscoverError('Please describe what you are looking for or enter hashtags.'); return; }
+
+            document.getElementById('btnDiscover').disabled = true;
+            document.getElementById('btnDiscover').innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Searching...';
+            document.getElementById('discoverProcessing').classList.remove('d-none');
+            document.getElementById('discoverError').classList.add('d-none');
+            document.getElementById('discoverResults').classList.add('d-none');
+
+            fetch('/api/discover', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query: query, hashtags: hashtags, sessionid: sessionid })
+            })
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                if (data.error) showDiscoverError(data.error);
+                else if (!data.reels || data.reels.length === 0) showDiscoverError(data.message || 'No reels found. Try different keywords.');
+                else showDiscoverResults(data);
+            })
+            .catch(function() { showDiscoverError('Server took too long. Try simplifying your search.'); });
+        });
+
+        function showDiscoverResults(data) {
+            DISCOVERED_REELS = data.reels || [];
+            document.getElementById('discoverProcessing').classList.add('d-none');
+            document.getElementById('discoverMeta').innerText = 'Found ' + DISCOVERED_REELS.length + ' reels from hashtags: ' + data.hashtags_searched.join(', ');
+            document.getElementById('btnDiscover').disabled = false;
+            document.getElementById('btnDiscover').innerHTML = '<i class="fas fa-rocket me-2"></i>Find Reels';
+            renderReelGrid();
+            document.getElementById('discoverResults').classList.remove('d-none');
+        }
+
+        function showDiscoverError(msg) {
+            document.getElementById('discoverProcessing').classList.add('d-none');
+            document.getElementById('discoverErrorDetails').innerText = msg;
+            document.getElementById('discoverError').classList.remove('d-none');
+            document.getElementById('btnDiscover').disabled = false;
+            document.getElementById('btnDiscover').innerHTML = '<i class="fas fa-rocket me-2"></i>Find Reels';
+        }
+
+        function resetDiscover() {
+            document.getElementById('discoverForm').reset();
+            document.getElementById('discoverProcessing').classList.add('d-none');
+            document.getElementById('discoverError').classList.add('d-none');
+            document.getElementById('discoverResults').classList.add('d-none');
+        }
+
+        function renderReelGrid() {
+            if (!DISCOVERED_REELS || DISCOVERED_REELS.length === 0) return;
+            var sortBy = document.getElementById('sortBy').value;
+            var reels = DISCOVERED_REELS.slice();
+            if (sortBy === 'username') reels.sort(function(a,b) { return a.username.localeCompare(b.username); });
+            else if (sortBy === 'taken_at') reels.sort(function(a,b) { return b.taken_at - a.taken_at; });
+            else reels.sort(function(a,b) { return (b[sortBy] || 0) - (a[sortBy] || 0); });
+
+            var minComments = parseInt(document.getElementById('filterMinComments').value) || 0;
+            var minLikes = parseInt(document.getElementById('filterMinLikes').value) || 0;
+            var creatorFilter = (document.getElementById('filterCreator').value || '').toLowerCase().replace('@','');
+
+            reels = reels.filter(function(r) { return r.comment_count >= minComments && r.like_count >= minLikes; });
+            if (creatorFilter) reels = reels.filter(function(r) { return r.username.toLowerCase().includes(creatorFilter); });
+
+            var grid = document.getElementById('reelGrid');
+            grid.innerHTML = '';
+            if (reels.length === 0) {
+                grid.innerHTML = '<div class="col-12 text-center py-5 text-muted"><i class="fas fa-search fs-2 mb-3 d-block"></i>No reels match your filters.</div>';
+                return;
+            }
+            reels.forEach(function(r) {
+                var col = document.createElement('div');
+                col.className = 'col-lg-4 col-md-6 mb-3';
+                var daysAgo = r.taken_at ? Math.floor((Date.now()/1000 - r.taken_at) / 86400) : null;
+                var safeUrl = r.reel_url.replace(/'/g, '');
+                col.innerHTML =
+                    '<div class="reel-card">' +
+                        '<div class="position-relative">' +
+                            '<img src="' + r.thumbnail_url + '" class="reel-thumb" alt="thumbnail" loading="lazy" onerror="this.style.display=\'none\'">' +
+                            '<div class="reel-thumb-overlay">' +
+                                '<a href="https://www.instagram.com/' + r.username + '/" target="_blank" class="text-white text-decoration-none fw-bold d-block"><i class="fas fa-user-circle me-1"></i>@' + escapeHtml(r.username) + '</a>' +
+                            '</div>' +
+                            '<span class="reel-thumb-badge">' + formatCount(r.comment_count) + ' comments</span>' +
+                        '</div>' +
+                        '<div class="reel-body">' +
+                            '<p class="reel-caption">' + escapeHtml(r.caption || 'No caption') + '</p>' +
+                            '<div class="reel-stats mb-2">' +
+                                '<span class="reel-stat-item"><i class="fas fa-heart text-danger"></i> ' + formatCount(r.like_count) + '</span>' +
+                                '<span class="reel-stat-item"><i class="fas fa-comment text-muted"></i> ' + formatCount(r.comment_count) + '</span>' +
+                                '<span class="reel-stat-item"><i class="fas fa-play text-primary"></i> ' + formatCount(r.play_count) + '</span>' +
+                                (daysAgo !== null ? '<span class="reel-stat-item"><i class="far fa-clock text-muted"></i> ' + daysAgo + 'd ago</span>' : '') +
+                            '</div>' +
+                            '<button class="btn btn-gradient w-100 btn-sm" onclick="scrapeFromDiscover(\'' + safeUrl + '\')">' +
+                                '<i class="fas fa-download me-1"></i>Scrape This Reel' +
+                            '</button>' +
+                        '</div>' +
+                    '</div>';
+                grid.appendChild(col);
+            });
+        }
+
+        function scrapeFromDiscover(reelUrl) {
+            document.getElementById('reelUrl').value = reelUrl;
+            document.getElementById('sessionId').value = document.getElementById('sessionIdDiscover').value;
+            switchMode('direct');
+            document.getElementById('scrapeForm').requestSubmit();
+        }
+
+        // ==================== SCRAPE ====================
         document.getElementById('scrapeForm').addEventListener('submit', function(e) {
             e.preventDefault();
-            const url = document.getElementById('reelUrl').value;
-            const sessionid = document.getElementById('sessionId').value;
-            const maxComments = parseInt(document.getElementById('maxComments').value) || 500;
+            var url = document.getElementById('reelUrl').value;
+            var sessionid = document.getElementById('sessionId').value.trim();
+            var maxComments = parseInt(document.getElementById('maxComments').value) || 500;
             if (!url || !sessionid) { showError('Please provide both the Reel URL and your sessionid.'); return; }
 
             document.getElementById('btnScrape').disabled = true;
@@ -348,14 +546,18 @@
             document.getElementById('resultsState').classList.add('d-none');
             document.getElementById('progressBar').style.width = '30%';
 
+            // Hide discover/direct mode forms while scraping
+            document.getElementById('discoverMode').classList.add('d-none');
+            document.getElementById('directMode').classList.add('d-none');
+
             fetch('/api/scrape', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ url, sessionid, max_comments: maxComments })
+                body: JSON.stringify({ url: url, sessionid: sessionid, max_comments: maxComments })
             })
-            .then(res => res.json())
-            .then(data => { if (data.error) showError(data.error); else showResults(data); })
-            .catch(err => showError('The server took too long to respond. Try reducing max comments to 100-200.'));
+            .then(function(res) { return res.json(); })
+            .then(function(data) { if (data.error) showError(data.error); else showResults(data); })
+            .catch(function() { showError('The server took too long to respond. Try reducing max comments to 100-200.'); });
         });
 
         function showResults(data) {
@@ -372,7 +574,7 @@
             document.getElementById('statReplies').innerText = Number(data.total_replies).toLocaleString();
             document.getElementById('statProfiles').innerText = Number(data.unique_commenters).toLocaleString();
             document.getElementById('statReported').innerText = Number(data.total_reported).toLocaleString();
-            document.getElementById('badgeCommentsCount').innerText = `${Number(data.total_comments).toLocaleString()} comments`;
+            document.getElementById('badgeCommentsCount').innerText = Number(data.total_comments).toLocaleString() + ' comments';
 
             buildCategories();
             buildDetectedPatterns();
@@ -383,91 +585,78 @@
             document.getElementById('btnScrape').innerHTML = '<i class="fas fa-rocket me-2"></i>Scrape';
         }
 
-        // === CATEGORIES ===
         function buildCategories() {
-            const counts = {};
-            ALL_COMMENTS.forEach(c => {
-                const cats = categorizeComment(c.text);
+            var counts = {};
+            ALL_COMMENTS.forEach(function(c) {
+                var cats = categorizeComment(c.text);
                 c._categories = cats;
-                cats.forEach(cat => { counts[cat] = (counts[cat] || 0) + 1; });
+                cats.forEach(function(cat) { counts[cat] = (counts[cat] || 0) + 1; });
             });
-            const grid = document.getElementById('categoryGrid');
+            var grid = document.getElementById('categoryGrid');
             grid.innerHTML = '';
-            const sortedCats = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-            for (const [key, count] of sortedCats) {
+            var sortedCats = Object.entries(counts).sort(function(a, b) { return b[1] - a[1]; });
+            for (var i = 0; i < sortedCats.length; i++) {
+                var key = sortedCats[i][0], count = sortedCats[i][1];
                 if (key === 'other' && count < 2) continue;
-                const def = CATEGORIES[key] || { label: 'Other', icon: 'fa-comment', color: '#6c757d' };
-                const col = document.createElement('div');
+                var def = CATEGORIES[key] || { label: 'Other', icon: 'fa-comment', color: '#6c757d' };
+                var col = document.createElement('div');
                 col.className = 'col-6';
-                col.innerHTML = `
-                    <div class="cat-card cat-btn" data-cat="${key}" onclick="toggleCategory('${key}')" id="catBtn_${key}">
-                        <div class="cat-icon" style="color: ${def.color}"><i class="fas ${def.icon}"></i></div>
-                        <div class="cat-count">${count}</div>
-                        <div class="cat-label">${def.label}</div>
-                    </div>`;
+                col.innerHTML =
+                    '<div class="cat-card cat-btn" data-cat="' + key + '" onclick="toggleCategory(\'' + key + '\')" id="catBtn_' + key + '">' +
+                        '<div class="cat-icon" style="color: ' + def.color + '"><i class="fas ' + def.icon + '"></i></div>' +
+                        '<div class="cat-count">' + count + '</div>' +
+                        '<div class="cat-label">' + def.label + '</div>' +
+                    '</div>';
                 grid.appendChild(col);
             }
         }
 
         function toggleCategory(key) {
-            if (activeCategory === key) {
-                activeCategory = null;
-                document.getElementById('catBtn_' + key)?.classList.remove('active');
-            } else {
-                document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+            if (activeCategory === key) { activeCategory = null; var btn = document.getElementById('catBtn_' + key); if (btn) btn.classList.remove('active'); }
+            else {
+                document.querySelectorAll('.cat-btn').forEach(function(b) { b.classList.remove('active'); });
                 activeCategory = key;
-                document.getElementById('catBtn_' + key)?.classList.add('active');
+                var btn2 = document.getElementById('catBtn_' + key); if (btn2) btn2.classList.add('active');
             }
-            renderComments();
-            updateFilterStatus();
+            renderComments(); updateFilterStatus();
         }
 
-        // === DETECTED PATTERNS ===
         function buildDetectedPatterns() {
-            const patterns = detectPatterns();
-            const container = document.getElementById('detectedPatternsList');
-            if (patterns.length === 0) {
-                container.innerHTML = '<p class="small text-muted mb-0">No common patterns detected. Use Custom Keywords below.</p>';
-                return;
-            }
+            var patterns = detectPatterns();
+            var container = document.getElementById('detectedPatternsList');
+            if (patterns.length === 0) { container.innerHTML = '<p class="small text-muted mb-0">No common patterns detected. Use Custom Keywords below.</p>'; return; }
             container.innerHTML = '';
-            patterns.forEach(p => {
-                const pill = document.createElement('span');
+            patterns.forEach(function(p) {
+                var pill = document.createElement('span');
                 pill.className = 'pattern-pill';
                 pill.dataset.pattern = p.text;
-                const display = p.text.length > 25 ? p.text.substring(0, 25) + '…' : p.text;
-                pill.innerHTML = `"${escapeHtml(display)}" <span class="pill-count">${p.count}</span>`;
-                pill.onclick = () => togglePatternFilter(p.text);
+                var display = p.text.length > 25 ? p.text.substring(0, 25) + '...' : p.text;
+                pill.innerHTML = '"' + escapeHtml(display) + '" <span class="pill-count">' + p.count + '</span>';
+                pill.onclick = function() { togglePatternFilter(p.text); };
                 container.appendChild(pill);
             });
         }
 
         function togglePatternFilter(text) {
-            const idx = activePatternFilters.indexOf(text);
+            var idx = activePatternFilters.indexOf(text);
             if (idx >= 0) {
                 activePatternFilters.splice(idx, 1);
-                document.querySelectorAll('.pattern-pill').forEach(p => { if (p.dataset.pattern === text) p.classList.remove('active'); });
+                document.querySelectorAll('.pattern-pill').forEach(function(p) { if (p.dataset.pattern === text) p.classList.remove('active'); });
             } else {
                 activePatternFilters.push(text);
-                document.querySelectorAll('.pattern-pill').forEach(p => { if (p.dataset.pattern === text) p.classList.add('active'); });
+                document.querySelectorAll('.pattern-pill').forEach(function(p) { if (p.dataset.pattern === text) p.classList.add('active'); });
             }
-            renderActiveFilters();
-            renderComments();
-            updateFilterStatus();
+            renderActiveFilters(); renderComments(); updateFilterStatus();
         }
 
-        // === CUSTOM KEYWORDS ===
         function addCustomKeyword() {
-            const input = document.getElementById('customKeywordInput');
-            const val = input.value.trim().toLowerCase();
+            var input = document.getElementById('customKeywordInput');
+            var val = input.value.trim().toLowerCase();
             if (!val) return;
             if (customKeywords.includes(val)) { input.value = ''; return; }
             customKeywords.push(val);
             input.value = '';
-            renderCustomKeywords();
-            renderActiveFilters();
-            renderComments();
-            updateFilterStatus();
+            renderCustomKeywords(); renderActiveFilters(); renderComments(); updateFilterStatus();
         }
 
         document.getElementById('customKeywordInput').addEventListener('keydown', function(e) {
@@ -475,195 +664,171 @@
         });
 
         function removeCustomKeyword(kw) {
-            customKeywords = customKeywords.filter(k => k !== kw);
-            renderCustomKeywords();
-            renderActiveFilters();
-            renderComments();
-            updateFilterStatus();
+            customKeywords = customKeywords.filter(function(k) { return k !== kw; });
+            renderCustomKeywords(); renderActiveFilters(); renderComments(); updateFilterStatus();
         }
 
         function renderCustomKeywords() {
-            const container = document.getElementById('customKeywordsList');
+            var container = document.getElementById('customKeywordsList');
             if (customKeywords.length === 0) { container.innerHTML = '<p class="small text-muted mb-0">No custom keywords added.</p>'; return; }
             container.innerHTML = '';
-            customKeywords.forEach(kw => {
-                const chip = document.createElement('span');
+            customKeywords.forEach(function(kw) {
+                var chip = document.createElement('span');
                 chip.className = 'custom-kw';
-                chip.innerHTML = `${escapeHtml(kw)} <span class="remove" onclick="removeCustomKeyword('${kw.replace(/'/g, "\\'")}')">&times;</span>`;
+                chip.innerHTML = escapeHtml(kw) + ' <span class="remove" onclick="removeCustomKeyword(\'' + kw.replace(/'/g, "\\'") + '\')">&times;</span>';
                 container.appendChild(chip);
             });
         }
 
         function renderActiveFilters() {
-            const container = document.getElementById('activeFilters');
+            var container = document.getElementById('activeFilters');
             container.innerHTML = '';
             if (activePatternFilters.length === 0 && customKeywords.length === 0) return;
-            activePatternFilters.forEach(text => {
-                const chip = document.createElement('span');
+            activePatternFilters.forEach(function(text) {
+                var chip = document.createElement('span');
                 chip.className = 'filter-chip';
-                const display = text.length > 20 ? text.substring(0, 20) + '…' : text;
-                chip.innerHTML = `<i class="fas fa-wand-magic-sparkles me-1"></i>"${escapeHtml(display)}" <span class="remove" onclick="togglePatternFilter('${text.replace(/'/g, "\\'")}')">&times;</span>`;
+                var display = text.length > 20 ? text.substring(0, 20) + '...' : text;
+                chip.innerHTML = '<i class="fas fa-wand-magic-sparkles me-1"></i>"' + escapeHtml(display) + '" <span class="remove" onclick="togglePatternFilter(\'' + text.replace(/'/g, "\\'") + '\')">&times;</span>';
                 container.appendChild(chip);
             });
-            customKeywords.forEach(kw => {
-                const chip = document.createElement('span');
+            customKeywords.forEach(function(kw) {
+                var chip = document.createElement('span');
                 chip.className = 'custom-kw';
-                chip.innerHTML = `<i class="fas fa-tag me-1"></i>${escapeHtml(kw)} <span class="remove" onclick="removeCustomKeyword('${kw.replace(/'/g, "\\'")}')">&times;</span>`;
+                chip.innerHTML = '<i class="fas fa-tag me-1"></i>' + escapeHtml(kw) + ' <span class="remove" onclick="removeCustomKeyword(\'' + kw.replace(/'/g, "\\'") + '\')">&times;</span>';
                 container.appendChild(chip);
             });
         }
 
-        // === SEARCH ===
         document.getElementById('keywordSearch').addEventListener('input', function() {
             activeKeyword = this.value.trim().toLowerCase();
-            renderComments();
-            updateFilterStatus();
+            renderComments(); updateFilterStatus();
         });
 
         function clearAllFilters() {
-            activeCategory = null;
-            activeKeyword = '';
-            activePatternFilters = [];
-            customKeywords = [];
+            activeCategory = null; activeKeyword = ''; activePatternFilters = []; customKeywords = [];
             document.getElementById('keywordSearch').value = '';
             document.getElementById('customKeywordInput').value = '';
-            document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
-            document.querySelectorAll('.pattern-pill').forEach(p => p.classList.remove('active'));
-            renderCustomKeywords();
-            renderActiveFilters();
-            renderComments();
-            updateFilterStatus();
+            document.querySelectorAll('.cat-btn').forEach(function(b) { b.classList.remove('active'); });
+            document.querySelectorAll('.pattern-pill').forEach(function(p) { p.classList.remove('active'); });
+            renderCustomKeywords(); renderActiveFilters(); renderComments(); updateFilterStatus();
         }
 
         function updateFilterStatus() {
-            const filtered = getFilteredComments();
-            const status = document.getElementById('filterStatus');
-            const badge = document.getElementById('filteredCountBadge');
-            const clearBtn = document.getElementById('clearFiltersBtn');
-            const isFiltered = activeCategory || activeKeyword || activePatternFilters.length > 0 || customKeywords.length > 0;
+            var filtered = getFilteredComments();
+            var status = document.getElementById('filterStatus');
+            var badge = document.getElementById('filteredCountBadge');
+            var clearBtn = document.getElementById('clearFiltersBtn');
+            var isFiltered = activeCategory || activeKeyword || activePatternFilters.length > 0 || customKeywords.length > 0;
             if (isFiltered) {
-                status.innerText = `Showing ${filtered.length} of ${ALL_COMMENTS.length} comments`;
-                badge.innerText = filtered.length;
-                badge.style.display = 'inline';
-                clearBtn.style.display = 'inline';
+                status.innerText = 'Showing ' + filtered.length + ' of ' + ALL_COMMENTS.length + ' comments';
+                badge.innerText = filtered.length; badge.style.display = 'inline'; clearBtn.style.display = 'inline';
             } else {
-                status.innerText = `Showing all ${ALL_COMMENTS.length} comments`;
-                badge.style.display = 'none';
-                clearBtn.style.display = 'none';
+                status.innerText = 'Showing all ' + ALL_COMMENTS.length + ' comments';
+                badge.style.display = 'none'; clearBtn.style.display = 'none';
             }
         }
 
-        // === FILTERING ===
         function getFilteredComments() {
-            // Combine pattern filters and custom keywords into one keyword list
-            const allKeywords = [...activePatternFilters, ...customKeywords];
-            return ALL_COMMENTS.filter(c => {
-                if (activeCategory) {
-                    if (!c._categories || !c._categories.includes(activeCategory)) return false;
-                }
-                if (activeKeyword) {
-                    if (!c.text.toLowerCase().includes(activeKeyword) && !c.username.toLowerCase().includes(activeKeyword)) return false;
-                }
+            var allKeywords = activePatternFilters.concat(customKeywords);
+            return ALL_COMMENTS.filter(function(c) {
+                if (activeCategory) { if (!c._categories || !c._categories.includes(activeCategory)) return false; }
+                if (activeKeyword) { if (!c.text.toLowerCase().includes(activeKeyword) && !c.username.toLowerCase().includes(activeKeyword)) return false; }
                 if (allKeywords.length > 0) {
-                    const norm = c.text.trim().toLowerCase();
-                    if (!allKeywords.some(f => norm.includes(f))) return false;
+                    var norm = c.text.trim().toLowerCase();
+                    var matched = false;
+                    for (var i = 0; i < allKeywords.length; i++) { if (norm.includes(allKeywords[i])) { matched = true; break; } }
+                    if (!matched) return false;
                 }
                 return true;
             });
         }
 
-        // === RENDER ===
         function renderComments() {
-            const filtered = getFilteredComments();
-            const container = document.getElementById('commentsContainer');
+            var filtered = getFilteredComments();
+            var container = document.getElementById('commentsContainer');
             container.innerHTML = '';
             if (filtered.length === 0) {
                 container.innerHTML = '<div class="text-center py-5 text-muted"><i class="fas fa-comment-slash fs-1 mb-3 d-block"></i>No comments match your filters.</div>';
-                updateFilterStatus();
-                return;
+                updateFilterStatus(); return;
             }
-            filtered.slice(0, 200).forEach(c => {
-                const div = document.createElement('div');
+            filtered.slice(0, 200).forEach(function(c) {
+                var div = document.createElement('div');
                 div.className = 'comment-item';
-                let badgeHtml = c.verified ? ' <i class="fas fa-check-circle badge-verified"></i>' : '';
-                let catHtml = '';
+                var badgeHtml = c.verified ? ' <i class="fas fa-check-circle badge-verified"></i>' : '';
+                var catHtml = '';
                 if (c._categories) {
-                    c._categories.forEach(cat => {
+                    c._categories.forEach(function(cat) {
                         if (cat === 'other') return;
-                        const def = CATEGORIES[cat];
-                        if (def) catHtml += `<span class="badge bg-light text-muted border me-1" style="font-size:0.65em"><i class="fas ${def.icon} me-1"></i>${def.label}</span>`;
+                        var def = CATEGORIES[cat];
+                        if (def) catHtml += '<span class="badge bg-light text-muted border me-1" style="font-size:0.65em"><i class="fas ' + def.icon + ' me-1"></i>' + def.label + '</span>';
                     });
                 }
-                let repliesHtml = '';
+                var repliesHtml = '';
                 if (c.replies && c.replies.length > 0) {
-                    c.replies.forEach(r => {
-                        repliesHtml += `<div class="comment-reply"><div class="d-flex align-items-center mb-1"><a href="https://www.instagram.com/${r.username}/" target="_blank" class="fw-bold text-decoration-none text-dark small">@${r.username}</a></div><div class="comment-text text-muted">${escapeHtml(r.text)}</div></div>`;
+                    c.replies.forEach(function(r) {
+                        repliesHtml += '<div class="comment-reply"><div class="d-flex align-items-center mb-1"><a href="https://www.instagram.com/' + r.username + '/" target="_blank" class="fw-bold text-decoration-none text-dark small">@' + escapeHtml(r.username) + '</a></div><div class="comment-text text-muted">' + escapeHtml(r.text) + '</div></div>';
                     });
                 }
-                div.innerHTML = `
-                    <div class="d-flex justify-content-between">
-                        <div class="d-flex align-items-center mb-1">
-                            <a href="${c.profile_url}" target="_blank" class="fw-bold text-decoration-none text-dark">@${c.username}</a>
-                            ${badgeHtml}
-                        </div>
-                        <span class="badge bg-light text-muted border"><i class="far fa-heart text-danger me-1"></i> ${c.likes}</span>
-                    </div>
-                    <div class="comment-text my-2 text-secondary">${escapeHtml(c.text)}</div>
-                    <div class="d-flex align-items-center text-muted small gap-2 flex-wrap">
-                        <span><i class="far fa-clock me-1"></i> ${formatDate(c.created_at)}</span>
-                        ${c.reply_count > 0 ? `<span><i class="far fa-comment-dots me-1"></i> ${c.reply_count} replies</span>` : ''}
-                    </div>
-                    ${catHtml ? `<div class="mt-1">${catHtml}</div>` : ''}
-                    ${repliesHtml}`;
+                div.innerHTML =
+                    '<div class="d-flex justify-content-between">' +
+                        '<div class="d-flex align-items-center mb-1"><a href="' + c.profile_url + '" target="_blank" class="fw-bold text-decoration-none text-dark">@' + escapeHtml(c.username) + '</a>' + badgeHtml + '</div>' +
+                        '<span class="badge bg-light text-muted border"><i class="far fa-heart text-danger me-1"></i> ' + c.likes + '</span>' +
+                    '</div>' +
+                    '<div class="comment-text my-2 text-secondary">' + escapeHtml(c.text) + '</div>' +
+                    '<div class="d-flex align-items-center text-muted small gap-2 flex-wrap">' +
+                        '<span><i class="far fa-clock me-1"></i> ' + formatDate(c.created_at) + '</span>' +
+                        (c.reply_count > 0 ? '<span><i class="far fa-comment-dots me-1"></i> ' + c.reply_count + ' replies</span>' : '') +
+                    '</div>' +
+                    (catHtml ? '<div class="mt-1">' + catHtml + '</div>' : '') +
+                    repliesHtml;
                 container.appendChild(div);
             });
             if (filtered.length > 200) {
-                const moreDiv = document.createElement('div');
+                var moreDiv = document.createElement('div');
                 moreDiv.className = 'text-center py-3 text-muted border-top mt-3 small';
-                moreDiv.innerText = `Showing 200 of ${filtered.length} filtered comments. Download CSV for the full list.`;
+                moreDiv.innerText = 'Showing 200 of ' + filtered.length + ' filtered comments. Download CSV for the full list.';
                 container.appendChild(moreDiv);
             }
             updateFilterStatus();
         }
 
-        // === DOWNLOAD ===
         function downloadCSV(type, scope) {
-            let rows = [];
-            let filename = '';
+            var rows = [], filename = '';
             if (type === 'comments') {
-                const data = scope === 'filtered' ? getFilteredComments() : ALL_COMMENTS;
+                var data = scope === 'filtered' ? getFilteredComments() : ALL_COMMENTS;
                 rows.push(['index','type','comment_id','parent_comment_id','username','full_name','user_id','verified','text','likes','created_at','reply_count','profile_url','categories']);
-                data.forEach(c => {
-                    const cats = (c._categories || []).join('; ');
+                data.forEach(function(c) {
+                    var cats = (c._categories || []).join('; ');
                     rows.push([c.index,'comment',c.comment_id,'',c.username,c.full_name,c.user_id,c.verified,c.text,c.likes,c.created_at,c.reply_count,c.profile_url,cats]);
-                    if (c.replies) c.replies.forEach((r, i) => {
-                        rows.push([`${c.index}.${i+1}`,'reply','',c.comment_id,r.username,r.full_name||'',r.user_id||'',false,r.text,r.likes,'','','','']);
+                    if (c.replies) c.replies.forEach(function(r, i) {
+                        rows.push([c.index + '.' + (i+1),'reply','',c.comment_id,r.username,r.full_name||'',r.user_id||'',false,r.text,r.likes,'','','','']);
                     });
                 });
-                filename = `ig_${SHORTCODE}_${scope}_comments.csv`;
+                filename = 'ig_' + SHORTCODE + '_' + scope + '_comments.csv';
             } else if (type === 'commenters') {
                 rows.push(['username','user_id','full_name','verified','is_private','profile_url']);
-                ALL_COMMENTERS.forEach(c => rows.push([c.username,c.user_id,c.full_name,c.verified,c.is_private,c.profile_url]));
-                filename = `ig_${SHORTCODE}_commenters.csv`;
+                ALL_COMMENTERS.forEach(function(c) { rows.push([c.username,c.user_id,c.full_name,c.verified,c.is_private,c.profile_url]); });
+                filename = 'ig_' + SHORTCODE + '_commenters.csv';
             } else if (type === 'json') {
-                const data = { shortcode: SHORTCODE, comments: scope === 'filtered' ? getFilteredComments() : ALL_COMMENTS, commenters: ALL_COMMENTERS };
-                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a'); a.href = url; a.download = `ig_${SHORTCODE}_full.json`;
-                document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+                var jsonData = { shortcode: SHORTCODE, comments: scope === 'filtered' ? getFilteredComments() : ALL_COMMENTS, commenters: ALL_COMMENTERS };
+                var jsonBlob = new Blob([JSON.stringify(jsonData, null, 2)], { type: 'application/json' });
+                var jsonUrl = URL.createObjectURL(jsonBlob);
+                var jsonA = document.createElement('a'); jsonA.href = jsonUrl; jsonA.download = 'ig_' + SHORTCODE + '_full.json';
+                document.body.appendChild(jsonA); jsonA.click(); document.body.removeChild(jsonA); URL.revokeObjectURL(jsonUrl);
                 return;
             }
-            const csv = rows.map(r => r.map(cell => {
-                const s = String(cell ?? '');
-                return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s;
-            }).join(',')).join('\n');
-            const blob = new Blob([csv], { type: 'text/csv' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a'); a.href = url; a.download = filename;
+            var csv = rows.map(function(r) {
+                return r.map(function(cell) {
+                    var s = String(cell == null ? '' : cell);
+                    return s.includes(',') || s.includes('"') || s.includes('\n') ? '"' + s.replace(/"/g, '""') + '"' : s;
+                }).join(',');
+            }).join('\n');
+            var blob = new Blob([csv], { type: 'text/csv' });
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a'); a.href = url; a.download = filename;
             document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
         }
 
-        // === UTILS ===
         function showError(errText) {
             document.getElementById('processingState').classList.add('d-none');
             document.getElementById('resultsState').classList.add('d-none');
@@ -681,18 +846,24 @@
             document.getElementById('errorState').classList.add('d-none');
             document.getElementById('resultsState').classList.add('d-none');
             document.getElementById('processingState').classList.add('d-none');
+            // Restore the mode that was active
+            if (currentMode === 'discover') {
+                document.getElementById('discoverMode').classList.remove('d-none');
+            } else {
+                document.getElementById('directMode').classList.remove('d-none');
+            }
             ALL_COMMENTS = []; ALL_COMMENTERS = [];
         }
 
+        function formatCount(n) { return Number(n || 0).toLocaleString(); }
         function formatDate(isoStr) {
             if (!isoStr) return '';
             try { return new Date(isoStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); }
             catch (e) { return isoStr; }
         }
-
         function escapeHtml(str) {
             if (!str) return '';
-            return str.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");
+            return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");
         }
     </script>
 </body>
