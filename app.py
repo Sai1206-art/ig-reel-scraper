@@ -595,6 +595,78 @@ def health():
     return jsonify({"status": "ok"})
 
 
+@app.route("/api/debug_hashtag", methods=["POST"])
+def debug_hashtag():
+    """Debug endpoint to test hashtag fetching strategies from Render's IP."""
+    data = request.json or {}
+    tag = data.get("tag", "realestate").strip().lstrip("#").lower()
+    sessionid = data.get("sessionid", "").strip()
+    if not sessionid:
+        return jsonify({"error": "sessionid required"}), 400
+
+    cookies = {"sessionid": sessionid}
+    results = {}
+
+    # Strategy 1: GraphQL query_hash GET
+    try:
+        variables = json.dumps({"tag_name": tag, "first": 10})
+        url = f"https://www.instagram.com/graphql/query/?query_hash={HASHTAG_QUERY_HASH}&variables={variables}"
+        resp = requests.get(url, cookies=cookies, headers={**IG_HEADERS, "Referer": f"https://www.instagram.com/explore/tags/{tag}/"}, timeout=15)
+        results["graphql_get"] = {"status": resp.status_code, "len": len(resp.text), "preview": resp.text[:300]}
+    except Exception as e:
+        results["graphql_get"] = {"error": str(e)}
+
+    # Strategy 2: Hashtag page HTML
+    try:
+        resp = requests.get(f"https://www.instagram.com/explore/tags/{tag}/", cookies=cookies, headers={**IG_HEADERS, "Accept": "text/html"}, timeout=15)
+        import re as _re
+        shortcodes = _re.findall(r'"shortcode":"([A-Za-z0-9_-]+)"', resp.text)
+        videos = _re.findall(r'"is_video":true', resp.text)
+        codes = _re.findall(r'"code":"([A-Za-z0-9_-]+)"', resp.text)
+        results["html_page"] = {"status": resp.status_code, "len": len(resp.text), "shortcodes": len(shortcodes), "videos": len(videos), "codes": codes[:5]}
+    except Exception as e:
+        results["html_page"] = {"error": str(e)}
+
+    # Strategy 3: Mobile API sections
+    try:
+        resp = requests.get(
+            f"https://www.instagram.com/api/v1/tags/{tag}/sections/",
+            cookies=cookies,
+            headers={**IG_HEADERS, "Accept": "application/json", "Referer": f"https://www.instagram.com/explore/tags/{tag}/"},
+            timeout=15, allow_redirects=True
+        )
+        results["mobile_sections"] = {"status": resp.status_code, "len": len(resp.text), "preview": resp.text[:300]}
+    except Exception as e:
+        results["mobile_sections"] = {"error": str(e)}
+
+    # Strategy 4: GraphQL POST with variables as string
+    try:
+        resp = requests.post(
+            "https://www.instagram.com/graphql/query",
+            cookies=cookies,
+            headers={**IG_HEADERS, "Content-Type": "application/json", "Referer": f"https://www.instagram.com/explore/tags/{tag}/"},
+            json={"query_hash": HASHTAG_QUERY_HASH, "variables": json.dumps({"tag_name": tag, "first": 10})},
+            timeout=15
+        )
+        results["graphql_post"] = {"status": resp.status_code, "len": len(resp.text), "preview": resp.text[:300]}
+    except Exception as e:
+        results["graphql_post"] = {"error": str(e)}
+
+    # Strategy 5: /api/v1/tags/web_info/
+    try:
+        resp = requests.get(
+            f"https://www.instagram.com/api/v1/tags/web_info/?tag_name={tag}",
+            cookies=cookies,
+            headers={**IG_HEADERS, "Accept": "application/json", "Referer": f"https://www.instagram.com/explore/tags/{tag}/"},
+            timeout=15, allow_redirects=True
+        )
+        results["web_info"] = {"status": resp.status_code, "len": len(resp.text), "preview": resp.text[:300]}
+    except Exception as e:
+        results["web_info"] = {"error": str(e)}
+
+    return jsonify({"tag": tag, "strategies": results})
+
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
