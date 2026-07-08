@@ -617,45 +617,79 @@ LEAD_HUNTER_NICHES = {
     "marketing_ai": {
         "label": "Marketing & AI Automation",
         "hashtags_usa": [
-            "marketingagency", "aiautomation", "aimarketing",
-            "marketingautomation", "digitalmarketingusa",
-            "aiautomationusa", "marketingagencyusa",
+            # Hashtags that attract BUSINESS OWNERS, not other agencies
+            "smallbusinesstips", "marketingtips", "seotips",
+            "websitedesign", "smallbusinessmarketing",
+            "entrepreneurtips", "businesstips",
+            "digitalmarketingtips", "growyourbusiness",
         ],
         "hashtags_global": [
-            "marketingagency", "aiautomation", "aimarketing",
-            "marketingautomation", "digitalmarketing",
+            "smallbusinesstips", "marketingtips", "seotips",
+            "websitedesign", "smallbusinessmarketing",
+            "entrepreneurtips", "businesstips",
+            "digitalmarketingtips", "growyourbusiness",
         ],
         "intent_keywords": {
             "hot": [
-                "interested", "how much", "what's your pricing", "whats your pricing",
-                "pricing", "how do i get started", "how do we start", "need this",
-                "we need this", "need help", "sign me up", "let's talk", "lets talk",
-                "dm me", "dm you", "reach out", "contact me", "book a call",
-                "schedule a call", "get started", "onboarding", "quote", "get a quote",
-                "how much does this cost", "what do you charge", "consultation",
-                "can you do this for us", "looking for an agency", "looking for automation",
-                "need an agency", "need automation", "hire you", "work with you",
-                "partner with you", "collaborate", "we're looking for", "we are looking for",
-                "tools", "tool", "send it", "send me", "link", "send link",
-                "send the link", "send tools", "send the tools", "send details",
-                "me please", "yes please", "i want", "i need", "want this",
-                "count me in", "im in", "i'm in",
+                # Direct need/hire signals from business owners
+                "need a website", "need a new website", "need a better website",
+                "need marketing", "need seo", "need help with marketing",
+                "need help with seo", "need help with my website",
+                "need more clients", "need more customers", "need more leads",
+                "need a marketer", "need an agency", "need a developer",
+                "need a web developer", "need someone to", "need help with",
+                "struggling with", "struggling to get", "struggling to find",
+                "can't get clients", "cant get clients", "no clients",
+                "no sales", "no traffic", "getting no traffic",
+                "not getting found", "not showing up on google",
+                "how do i get more clients", "how do i get more customers",
+                "how do i rank on google", "how do i get found on google",
+                "how do i get more traffic", "how do i improve my seo",
+                "how do i build a website", "how do i start marketing",
+                "my website is", "my website sucks", "website isn't working",
+                "my marketing isn't", "marketing isn't working",
+                "i need this for my business", "we need this",
+                "how much do you charge", "what do you charge",
+                "how much does this cost", "what's your pricing",
+                "whats your pricing", "how much for a website",
+                "how much for seo", "pricing", "get a quote",
+                "book a call", "schedule a call", "consultation",
+                "let's talk", "lets talk", "dm me", "reach out",
+                "contact me", "hire you", "work with you",
+                "can you help", "can you do this for",
+                "looking for someone to", "looking for an agency",
+                "looking for a developer", "looking for marketing",
+                "where do i start", "how do i get started",
+                "help me with", "help with my",
             ],
             "warm": [
-                "question", "how does", "can you", "do you offer", "do you provide",
-                "what services", "what do you do", "tell me more", "more info",
-                "more information", "details", "curious", "sounds interesting",
-                "sounds good", "love this", "great service", "great work",
-                "impressed", "amazing", "incredible", "wow", "interesting",
-                "we do something similar", "we offer", "our agency", "our company",
-                "check us out", "sounds like", "this is exactly", "exactly what",
-                "where are you based", "do you work with", "what niches",
-                "automate", "automation", "ai tools", "chatbot", "workflow",
-                "funnel", "lead gen", "lead generation", "crm", "integration",
-                "game changer", "gamechanger", "insane", "fire", "🔥", "💯",
-                "this is", "love it", "need", "want",
+                # Business owner curiosity/learning signals
+                "interesting", "good tip", "great tip", "great advice",
+                "didn't know this", "didnt know this", "didn't know that",
+                "learning", "trying this", "going to try", "will try",
+                "need to do this", "should i", "worth it",
+                "how long does it take", "what tool do you use",
+                "what platform do you use", "what do you recommend",
+                "useful", "helpful", "thanks for sharing", "thanks for the tip",
+                "saved", "bookmark", "noted",
+                "my business", "small business", "my clients",
+                "how does", "what's the best", "whats the best",
+                "any tips for", "advice for", "struggling",
+                "overwhelmed", "confused about", "not sure how",
+                "where should i", "what should i do",
+                "is it worth", "should i hire",
+                "first time", "just starting", "new business",
+                "local business", "small biz",
             ],
         },
+        # Spam/noise patterns to exclude even if they match keywords
+        "spam_patterns": [
+            "erase", "erase please", "dakun erase",
+            "check my profile", "check my page", "check us out",
+            "dm for shoutout", "follow for follow", "f4f",
+            "link in bio", "check my bio", "visit my bio",
+            "promotion", "collab?", "collab opportunity",
+        ],
     },
     "realestate": {
         "label": "Real Estate",
@@ -689,6 +723,10 @@ LEAD_HUNTER_NICHES = {
                 "love it", "amazing", "fire", "🔥", "💯", "game changer",
             ],
         },
+        "spam_patterns": [
+            "erase", "check my profile", "check my page", "check us out",
+            "dm for shoutout", "follow for follow", "f4f", "link in bio",
+        ],
     },
     "fitness": {
         "label": "Fitness & Supplements",
@@ -720,75 +758,114 @@ LEAD_HUNTER_NICHES = {
                 "love it", "amazing", "fire", "🔥", "💯", "game changer",
             ],
         },
+        "spam_patterns": [
+            "erase", "check my profile", "check my page", "check us out",
+            "dm for shoutout", "follow for follow", "f4f", "link in bio",
+        ],
     },
 }
 
-def score_comment_intent(text, niche_key):
+def extract_us_phone_numbers(text):
     """
-    Score a comment's intent level based on niche-specific keywords.
-    Instagram comments work differently from emails — people use short keywords,
-    emojis, and CTAs from the creator ("comment TOOLS to get the list").
+    Extract US phone numbers from a comment.
+    Matches formats: (123) 456-7890, 123-456-7890, 1234567890, +1 123 456 7890, etc.
+    Returns list of formatted numbers.
     """
     if not text:
-        return ("cold", 0)
+        return []
+
+    # US phone regex — matches common formats
+    phone_regex = re.compile(
+        r'(?:\+?1[\s.-]?)?'           # optional country code +1
+        r'(?:\(\d{3}\)|\d{3})'        # area code: (123) or 123
+        r'[\s.-]?'                     # separator
+        r'\d{3}'                       # first 3 digits
+        r'[\s.-]?'                     # separator
+        r'\d{4}'                       # last 4 digits
+    )
+
+    matches = phone_regex.findall(text)
+    # Filter: must be 10+ digits (avoid matching short numbers like years "2024")
+    valid = []
+    for m in matches:
+        digits = re.sub(r'\D', '', m)
+        # US numbers are 10 digits (or 11 with leading 1)
+        if len(digits) == 10 and digits[0] in '23456789':  # area code can't start with 0/1
+            valid.append(f"({digits[:3]}) {digits[3:6]}-{digits[6:]}")
+        elif len(digits) == 11 and digits[0] == '1':
+            d = digits[1:]
+            if d[0] in '23456789':
+                valid.append(f"({d[:3]}) {d[3:6]}-{d[6:]}")
+    return valid
+
+
+def score_comment_intent(text, niche_key):
+    """
+    Score a comment's intent level based on whether it contains a US phone number
+    AND business-need keywords. Phone number presence = strong buying signal.
+    """
+    if not text:
+        return ("cold", 0, [])
     text_lower = text.lower().strip()
-    text_clean = re.sub(r'[^\w\s]', '', text_lower)  # strip punctuation for matching
+    text_clean = re.sub(r'[^\w\s]', '', text_lower)
+
+    # Extract phone numbers — this is the primary signal
+    phone_numbers = extract_us_phone_numbers(text)
+    has_phone = len(phone_numbers) > 0
+
     niche = LEAD_HUNTER_NICHES.get(niche_key, {})
     intent_kw = niche.get("intent_keywords", {})
     hot_kw = intent_kw.get("hot", [])
     warm_kw = intent_kw.get("warm", [])
 
-    # Keyword matching (check both raw and cleaned text)
+    # SPAM / NOISE EXCLUSION
+    spam_patterns = niche.get("spam_patterns", [])
+    universal_spam = [
+        "erase", "check my profile", "check my page", "check us out",
+        "dm for shoutout", "follow for follow", "f4f", "link in bio",
+        "check my bio", "visit my bio", "promotion", "collab?",
+        "collab opportunity", "gain train", "follow chain",
+    ]
+    all_spam = spam_patterns + universal_spam
+    for pattern in all_spam:
+        if pattern in text_lower:
+            return ("cold", 0, [])
+
+    # Keyword matching
     hot_match = sum(1 for kw in hot_kw if kw in text_lower or kw in text_clean)
     warm_match = sum(1 for kw in warm_kw if kw in text_lower or kw in text_clean)
 
-    # Universal intent signals that work across all niches:
-    # 1. Commenting a single keyword (e.g. "tools", "link", "yes") = CTA response = HOT
-    universal_hot = [
-        "send", "link", "please", "me", "info", "details", "yes",
-        "interested", "dm", "need", "want", "this", "now",
-    ]
-    # 2. Single-word comments that are >2 chars and match a CTA pattern
     words = text_clean.split()
-    is_single_keyword = len(words) == 1 and len(words[0]) >= 3
-
-    # 3. Universal warm signals
-    universal_warm = [
-        "how", "what", "where", "can", "do you", "question",
-        "love", "great", "amazing", "awesome", "fire", "👏", "💯", "🔥",
-        "wow", "insane", "incredible", "game changer", "gamechanger",
-        "need this", "want this", "love this", "this is",
-    ]
-
-    universal_hot_match = sum(1 for kw in universal_hot if kw in text_lower or kw in text_clean)
-    universal_warm_match = sum(1 for kw in universal_warm if kw in text_lower or kw in text_clean)
-
-    # Scoring logic:
-    # - Niche hot keywords = strongest signal
-    # - Niche warm keywords = medium signal
-    # - Single keyword CTA response (e.g. "tools") = hot (they self-identified as wanting something)
-    # - Universal warm signals = warm
-    # - Pure emoji or 1-2 char = cold (no intent)
-
-    total_hot = hot_match + (1 if is_single_keyword and len(words[0]) >= 4 else 0)
-    total_warm = warm_match + universal_warm_match
 
     # Pure emoji / very short = cold
     if len(text_clean) <= 2 and not any(c.isalpha() for c in text_clean):
-        return ("cold", 0)
+        return ("cold", 0, phone_numbers)
 
-    if total_hot >= 2:
-        return ("hot", 3)
-    elif total_hot == 1:
-        return ("hot", 2)
-    elif total_warm >= 2:
-        return ("warm", 1)
-    elif total_warm == 1:
-        return ("warm", 1)
-    elif is_single_keyword and len(words[0]) >= 4:
-        # Single meaningful keyword like "tools", "pricing", "automation"
-        return ("hot", 2)
-    return ("cold", 0)
+    # --- PRIMARY SIGNAL: Phone number in comment ---
+    if has_phone:
+        # Phone + business keywords = HOT (score 3)
+        if hot_match >= 1:
+            return ("hot", 3, phone_numbers)
+        # Phone + warm keywords = HOT (score 2)
+        if warm_match >= 1:
+            return ("hot", 2, phone_numbers)
+        # Phone alone but comment is a real sentence (3+ words) = HOT (score 2)
+        # Someone leaving their number on a marketing reel IS intent
+        if len(words) >= 2:
+            return ("hot", 2, phone_numbers)
+        # Phone number alone, single word = WARM (might be spam/random)
+        return ("warm", 1, phone_numbers)
+
+    # --- SECONDARY SIGNAL: Keywords only, no phone ---
+    if hot_match >= 2:
+        return ("hot", 3, phone_numbers)
+    elif hot_match == 1:
+        return ("hot", 2, phone_numbers)
+    elif warm_match >= 2:
+        return ("warm", 1, phone_numbers)
+    elif warm_match == 1:
+        return ("warm", 1, phone_numbers)
+    return ("cold", 0, phone_numbers)
 
 
 @app.route("/api/lead_hunter", methods=["POST"])
@@ -909,21 +986,21 @@ def lead_hunter():
         for comment in result["comments"]:
             username = comment["commenter"]["username"]
             text = comment["text"]
-            intent_level, intent_score = score_comment_intent(text, niche_key)
+            intent_level, intent_score, phone_numbers = score_comment_intent(text, niche_key)
 
-            # Skip cold comments with zero engagement value
-            if intent_level == "cold" and intent_score == 0:
+            # Only keep leads with a phone number — that's our hard filter
+            if not phone_numbers:
                 continue
 
             # Dedup by username — keep the highest intent comment
             lead_key = username.lower()
             if lead_key in lead_dedup:
-                # Check if this new comment has higher intent than existing
                 existing = next((l for l in all_leads if l["username"].lower() == lead_key), None)
                 if existing and intent_score > existing.get("intent_score", 0):
-                    existing["text"] = text
+                    existing["comment_text"] = text
                     existing["intent_level"] = intent_level
                     existing["intent_score"] = intent_score
+                    existing["phone_numbers"] = phone_numbers
                     existing["reel_source"] = reel.get("reel_url", "")
                     existing["reel_creator"] = reel.get("username", "")
                 continue
@@ -938,6 +1015,7 @@ def lead_hunter():
                 "is_private": commenter.get("is_private", False),
                 "profile_url": f"https://www.instagram.com/{username}/",
                 "comment_text": text,
+                "phone_numbers": phone_numbers,
                 "intent_level": intent_level,
                 "intent_score": intent_score,
                 "reel_source": reel.get("reel_url", ""),
