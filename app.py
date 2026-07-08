@@ -617,17 +617,17 @@ LEAD_HUNTER_NICHES = {
     "marketing_ai": {
         "label": "Marketing & AI Automation",
         "hashtags_usa": [
-            # Hashtags that attract BUSINESS OWNERS, not other agencies
-            "smallbusinesstips", "marketingtips", "seotips",
+            # High-traffic hashtags that attract business owners needing marketing/web help
+            "smallbusiness", "entrepreneur", "marketingstrategy",
             "websitedesign", "smallbusinessmarketing",
-            "entrepreneurtips", "businesstips",
-            "digitalmarketingtips", "growyourbusiness",
+            "businessowner", "digitalmarketing",
+            "seomarketing", "growyourbusiness",
         ],
         "hashtags_global": [
-            "smallbusinesstips", "marketingtips", "seotips",
+            "smallbusiness", "entrepreneur", "marketingstrategy",
             "websitedesign", "smallbusinessmarketing",
-            "entrepreneurtips", "businesstips",
-            "digitalmarketingtips", "growyourbusiness",
+            "businessowner", "digitalmarketing",
+            "seomarketing", "growyourbusiness",
         ],
         "intent_keywords": {
             "hot": [
