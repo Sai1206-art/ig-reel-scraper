@@ -636,6 +636,10 @@ LEAD_HUNTER_NICHES = {
                 "can you do this for us", "looking for an agency", "looking for automation",
                 "need an agency", "need automation", "hire you", "work with you",
                 "partner with you", "collaborate", "we're looking for", "we are looking for",
+                "tools", "tool", "send it", "send me", "link", "send link",
+                "send the link", "send tools", "send the tools", "send details",
+                "me please", "yes please", "i want", "i need", "want this",
+                "count me in", "im in", "i'm in",
             ],
             "warm": [
                 "question", "how does", "can you", "do you offer", "do you provide",
@@ -648,6 +652,8 @@ LEAD_HUNTER_NICHES = {
                 "where are you based", "do you work with", "what niches",
                 "automate", "automation", "ai tools", "chatbot", "workflow",
                 "funnel", "lead gen", "lead generation", "crm", "integration",
+                "game changer", "gamechanger", "insane", "fire", "🔥", "💯",
+                "this is", "love it", "need", "want",
             ],
         },
     },
@@ -670,6 +676,8 @@ LEAD_HUNTER_NICHES = {
                 "ready to buy", "pre-approved", "how do i buy", "want to see",
                 "more details", "price range", "what's the price", "whats the price",
                 "available", "still available", "how much down", "payment plan",
+                "send", "link", "info", "details", "yes please", "me please",
+                "i want", "i need", "want this", "count me in",
             ],
             "warm": [
                 "question", "how does", "where is this", "location", "area",
@@ -678,6 +686,7 @@ LEAD_HUNTER_NICHES = {
                 "great property", "beautiful home", "interested in learning",
                 "first time buyer", "investment property", "rental", "rental yield",
                 "neighborhood", "schools", "amenities",
+                "love it", "amazing", "fire", "🔥", "💯", "game changer",
             ],
         },
     },
@@ -699,6 +708,8 @@ LEAD_HUNTER_NICHES = {
                 "i want this", "where do i buy", "how do i order", "link to buy",
                 "discount code", "promo code", "need a coach", "need a trainer",
                 "ready to start", "let's go", "lets go", "count me in",
+                "send", "link", "info", "yes please", "me please",
+                "i want", "i need", "want this", "im in", "i'm in",
             ],
             "warm": [
                 "question", "how does", "what's the routine", "meal plan",
@@ -706,32 +717,77 @@ LEAD_HUNTER_NICHES = {
                 "more info", "curious", "sounds interesting", "love this",
                 "great workout", "inspiring", "motivated", "keep it up",
                 "what supplement", "which protein", "brand", "flavor",
+                "love it", "amazing", "fire", "🔥", "💯", "game changer",
             ],
         },
     },
 }
 
 def score_comment_intent(text, niche_key):
-    """Score a comment's intent level based on niche-specific keywords."""
+    """
+    Score a comment's intent level based on niche-specific keywords.
+    Instagram comments work differently from emails — people use short keywords,
+    emojis, and CTAs from the creator ("comment TOOLS to get the list").
+    """
     if not text:
         return ("cold", 0)
     text_lower = text.lower().strip()
+    text_clean = re.sub(r'[^\w\s]', '', text_lower)  # strip punctuation for matching
     niche = LEAD_HUNTER_NICHES.get(niche_key, {})
     intent_kw = niche.get("intent_keywords", {})
     hot_kw = intent_kw.get("hot", [])
     warm_kw = intent_kw.get("warm", [])
 
-    hot_match = sum(1 for kw in hot_kw if kw in text_lower)
-    warm_match = sum(1 for kw in warm_kw if kw in text_lower)
+    # Keyword matching (check both raw and cleaned text)
+    hot_match = sum(1 for kw in hot_kw if kw in text_lower or kw in text_clean)
+    warm_match = sum(1 for kw in warm_kw if kw in text_lower or kw in text_clean)
 
-    if hot_match >= 2:
+    # Universal intent signals that work across all niches:
+    # 1. Commenting a single keyword (e.g. "tools", "link", "yes") = CTA response = HOT
+    universal_hot = [
+        "send", "link", "please", "me", "info", "details", "yes",
+        "interested", "dm", "need", "want", "this", "now",
+    ]
+    # 2. Single-word comments that are >2 chars and match a CTA pattern
+    words = text_clean.split()
+    is_single_keyword = len(words) == 1 and len(words[0]) >= 3
+
+    # 3. Universal warm signals
+    universal_warm = [
+        "how", "what", "where", "can", "do you", "question",
+        "love", "great", "amazing", "awesome", "fire", "👏", "💯", "🔥",
+        "wow", "insane", "incredible", "game changer", "gamechanger",
+        "need this", "want this", "love this", "this is",
+    ]
+
+    universal_hot_match = sum(1 for kw in universal_hot if kw in text_lower or kw in text_clean)
+    universal_warm_match = sum(1 for kw in universal_warm if kw in text_lower or kw in text_clean)
+
+    # Scoring logic:
+    # - Niche hot keywords = strongest signal
+    # - Niche warm keywords = medium signal
+    # - Single keyword CTA response (e.g. "tools") = hot (they self-identified as wanting something)
+    # - Universal warm signals = warm
+    # - Pure emoji or 1-2 char = cold (no intent)
+
+    total_hot = hot_match + (1 if is_single_keyword and len(words[0]) >= 4 else 0)
+    total_warm = warm_match + universal_warm_match
+
+    # Pure emoji / very short = cold
+    if len(text_clean) <= 2 and not any(c.isalpha() for c in text_clean):
+        return ("cold", 0)
+
+    if total_hot >= 2:
         return ("hot", 3)
-    elif hot_match == 1:
+    elif total_hot == 1:
         return ("hot", 2)
-    elif warm_match >= 2:
+    elif total_warm >= 2:
         return ("warm", 1)
-    elif warm_match == 1:
+    elif total_warm == 1:
         return ("warm", 1)
+    elif is_single_keyword and len(words[0]) >= 4:
+        # Single meaningful keyword like "tools", "pricing", "automation"
+        return ("hot", 2)
     return ("cold", 0)
 
 
