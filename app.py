@@ -610,6 +610,314 @@ def discover():
 
 
 # ============================================================
+# LEAD HUNTER MODULE (standalone — does not modify existing code)
+# ============================================================
+
+LEAD_HUNTER_NICHES = {
+    "marketing_ai": {
+        "label": "Marketing & AI Automation",
+        "hashtags_usa": [
+            "marketingagency", "aiautomation", "aimarketing",
+            "marketingautomation", "digitalmarketingusa",
+            "aiautomationusa", "marketingagencyusa",
+        ],
+        "hashtags_global": [
+            "marketingagency", "aiautomation", "aimarketing",
+            "marketingautomation", "digitalmarketing",
+        ],
+        "intent_keywords": {
+            "hot": [
+                "interested", "how much", "what's your pricing", "whats your pricing",
+                "pricing", "how do i get started", "how do we start", "need this",
+                "we need this", "need help", "sign me up", "let's talk", "lets talk",
+                "dm me", "dm you", "reach out", "contact me", "book a call",
+                "schedule a call", "get started", "onboarding", "quote", "get a quote",
+                "how much does this cost", "what do you charge", "consultation",
+                "can you do this for us", "looking for an agency", "looking for automation",
+                "need an agency", "need automation", "hire you", "work with you",
+                "partner with you", "collaborate", "we're looking for", "we are looking for",
+            ],
+            "warm": [
+                "question", "how does", "can you", "do you offer", "do you provide",
+                "what services", "what do you do", "tell me more", "more info",
+                "more information", "details", "curious", "sounds interesting",
+                "sounds good", "love this", "great service", "great work",
+                "impressed", "amazing", "incredible", "wow", "interesting",
+                "we do something similar", "we offer", "our agency", "our company",
+                "check us out", "sounds like", "this is exactly", "exactly what",
+                "where are you based", "do you work with", "what niches",
+                "automate", "automation", "ai tools", "chatbot", "workflow",
+                "funnel", "lead gen", "lead generation", "crm", "integration",
+            ],
+        },
+    },
+    "realestate": {
+        "label": "Real Estate",
+        "hashtags_usa": [
+            "realestate", "realestateagent", "realestateinvesting",
+            "homebuying", "realtor", "propertyinvestment",
+            "realestateusa", "luxuryhomes",
+        ],
+        "hashtags_global": [
+            "realestate", "realestateagent", "realestateinvesting",
+            "property", "homebuying", "realtor",
+        ],
+        "intent_keywords": {
+            "hot": [
+                "interested", "how much", "pricing", "need this", "dm me",
+                "reach out", "contact me", "book a viewing", "schedule a visit",
+                "get started", "quote", "looking to buy", "looking to invest",
+                "ready to buy", "pre-approved", "how do i buy", "want to see",
+                "more details", "price range", "what's the price", "whats the price",
+                "available", "still available", "how much down", "payment plan",
+            ],
+            "warm": [
+                "question", "how does", "where is this", "location", "area",
+                "what's the sqft", "bedrooms", "bathrooms", "tell me more",
+                "more info", "curious", "sounds interesting", "love this",
+                "great property", "beautiful home", "interested in learning",
+                "first time buyer", "investment property", "rental", "rental yield",
+                "neighborhood", "schools", "amenities",
+            ],
+        },
+    },
+    "fitness": {
+        "label": "Fitness & Supplements",
+        "hashtags_usa": [
+            "fitness", "fitnessmotivation", "workout", "supplements",
+            "protein", "gymmotivation", "personaltrainer",
+            "fitnesscoach", "fitfam",
+        ],
+        "hashtags_global": [
+            "fitness", "fitnessmotivation", "workout", "supplements",
+            "gymmotivation", "personaltrainer",
+        ],
+        "intent_keywords": {
+            "hot": [
+                "interested", "how much", "pricing", "need this", "dm me",
+                "sign me up", "book a call", "get started", "coach me",
+                "i want this", "where do i buy", "how do i order", "link to buy",
+                "discount code", "promo code", "need a coach", "need a trainer",
+                "ready to start", "let's go", "lets go", "count me in",
+            ],
+            "warm": [
+                "question", "how does", "what's the routine", "meal plan",
+                "diet", "nutrition", "calories", "workout plan", "tell me more",
+                "more info", "curious", "sounds interesting", "love this",
+                "great workout", "inspiring", "motivated", "keep it up",
+                "what supplement", "which protein", "brand", "flavor",
+            ],
+        },
+    },
+}
+
+def score_comment_intent(text, niche_key):
+    """Score a comment's intent level based on niche-specific keywords."""
+    if not text:
+        return ("cold", 0)
+    text_lower = text.lower().strip()
+    niche = LEAD_HUNTER_NICHES.get(niche_key, {})
+    intent_kw = niche.get("intent_keywords", {})
+    hot_kw = intent_kw.get("hot", [])
+    warm_kw = intent_kw.get("warm", [])
+
+    hot_match = sum(1 for kw in hot_kw if kw in text_lower)
+    warm_match = sum(1 for kw in warm_kw if kw in text_lower)
+
+    if hot_match >= 2:
+        return ("hot", 3)
+    elif hot_match == 1:
+        return ("hot", 2)
+    elif warm_match >= 2:
+        return ("warm", 1)
+    elif warm_match == 1:
+        return ("warm", 1)
+    return ("cold", 0)
+
+
+@app.route("/api/lead_hunter", methods=["POST"])
+def lead_hunter():
+    """
+    Standalone Lead Hunter endpoint.
+    Input: { niche, location, max_days_old, top_reels_to_scrape, max_comments_per_reel, sessionid }
+    Process: discover reels → filter by date → auto-scrape comments from top reels → merge → score intent → return leads
+    Does NOT touch existing /api/discover or /api/scrape logic.
+    """
+    data = request.json or {}
+    niche_key = data.get("niche", "marketing_ai")
+    location = data.get("location", "usa").lower().strip()
+    max_days_old = int(data.get("max_days_old", 7))
+    top_reels_count = min(int(data.get("top_reels_to_scrape", 5)), 10)
+    max_comments_per_reel = int(data.get("max_comments_per_reel", 100))
+    sessionid = data.get("sessionid", "").strip()
+
+    if not sessionid:
+        return jsonify({"error": "Instagram session ID is required."}), 400
+
+    niche = LEAD_HUNTER_NICHES.get(niche_key)
+    if not niche:
+        return jsonify({"error": f"Unknown niche: {niche_key}"}), 400
+
+    cookies = {"sessionid": sessionid}
+
+    # Pick hashtags based on location
+    if location == "usa":
+        tags_to_search = niche["hashtags_usa"]
+    else:
+        tags_to_search = niche["hashtags_global"]
+
+    # Limit to 3 hashtags to stay within Render's 60s timeout
+    tags_to_search = tags_to_search[:3]
+
+    now = time.time()
+
+    # --- Phase 1: Discover reels across hashtags ---
+    all_reels = []
+    seen_codes = set()
+    hashtags_used = []
+
+    for tag in tags_to_search:
+        reels = fetch_hashtag_media(tag, cookies)
+        if reels:
+            hashtags_used.append(tag)
+        for r in reels:
+            if r["shortcode"] not in seen_codes:
+                seen_codes.add(r["shortcode"])
+                all_reels.append(r)
+        time.sleep(0.3)
+
+    if not all_reels:
+        return jsonify({
+            "error": "No reels found. Your session ID may have expired or Instagram is rate-limiting. Try again in a few minutes.",
+        }), 200
+
+    # --- Phase 2: Hard date filter ---
+    filtered_reels = []
+    for r in all_reels:
+        days_old = max(0, (now - r["taken_at"]) / 86400) if r["taken_at"] else 999
+        if days_old <= max_days_old:
+            r["days_old"] = round(days_old, 1)
+            filtered_reels.append(r)
+
+    if not filtered_reels:
+        return jsonify({
+            "niche": niche["label"],
+            "hashtags_searched": hashtags_used,
+            "total_reels_found": len(all_reels),
+            "reels_after_date_filter": 0,
+            "message": f"Found {len(all_reels)} reels but none were posted within the last {max_days_old} days. Try increasing the date range.",
+            "leads": [],
+            "reels_scraped": [],
+        })
+
+    # --- Phase 3: Sort by comment count (we want reels with the most comments) ---
+    filtered_reels.sort(key=lambda x: x.get("comment_count", 0), reverse=True)
+
+    # Pick top N reels
+    reels_to_scrape = filtered_reels[:top_reels_count]
+
+    # --- Phase 4: Auto-scrape comments from each reel ---
+    all_leads = []
+    lead_dedup = set()  # dedup by username across all reels
+    reels_scraped_info = []
+
+    for reel in reels_to_scrape:
+        shortcode = reel["shortcode"]
+        try:
+            result = scrape_all_comments(shortcode, max_comments=max_comments_per_reel, cookies=cookies)
+        except Exception as e:
+            reels_scraped_info.append({
+                "shortcode": shortcode,
+                "reel_url": reel.get("reel_url", ""),
+                "username": reel.get("username", ""),
+                "comment_count_on_reel": reel.get("comment_count", 0),
+                "comments_scraped": 0,
+                "error": str(e),
+            })
+            time.sleep(0.5)
+            continue
+
+        comments_scraped = result["comment_count"]
+        reels_scraped_info.append({
+            "shortcode": shortcode,
+            "reel_url": reel.get("reel_url", ""),
+            "username": reel.get("username", ""),
+            "caption": (reel.get("caption") or "")[:200],
+            "like_count": reel.get("like_count", 0),
+            "comment_count_on_reel": reel.get("comment_count", 0),
+            "comments_scraped": comments_scraped,
+            "days_old": reel.get("days_old", 0),
+        })
+
+        # --- Phase 5: Score each commenter's intent ---
+        for comment in result["comments"]:
+            username = comment["commenter"]["username"]
+            text = comment["text"]
+            intent_level, intent_score = score_comment_intent(text, niche_key)
+
+            # Skip cold comments with zero engagement value
+            if intent_level == "cold" and intent_score == 0:
+                continue
+
+            # Dedup by username — keep the highest intent comment
+            lead_key = username.lower()
+            if lead_key in lead_dedup:
+                # Check if this new comment has higher intent than existing
+                existing = next((l for l in all_leads if l["username"].lower() == lead_key), None)
+                if existing and intent_score > existing.get("intent_score", 0):
+                    existing["text"] = text
+                    existing["intent_level"] = intent_level
+                    existing["intent_score"] = intent_score
+                    existing["reel_source"] = reel.get("reel_url", "")
+                    existing["reel_creator"] = reel.get("username", "")
+                continue
+
+            lead_dedup.add(lead_key)
+            commenter = comment["commenter"]
+            all_leads.append({
+                "username": username,
+                "full_name": commenter.get("full_name", ""),
+                "user_id": commenter.get("user_id", ""),
+                "is_verified": commenter.get("is_verified", False),
+                "is_private": commenter.get("is_private", False),
+                "profile_url": f"https://www.instagram.com/{username}/",
+                "comment_text": text,
+                "intent_level": intent_level,
+                "intent_score": intent_score,
+                "reel_source": reel.get("reel_url", ""),
+                "reel_creator": reel.get("username", ""),
+                "comment_likes": comment.get("likes_count", 0),
+                "comment_created_at": comment.get("created_at_utc", ""),
+            })
+
+        time.sleep(0.5)  # rate limit safety
+
+    # --- Phase 6: Sort leads by intent ---
+    intent_order = {"hot": 0, "warm": 1, "cold": 2}
+    all_leads.sort(key=lambda x: (intent_order.get(x["intent_level"], 3), -x.get("intent_score", 0)))
+
+    hot_count = sum(1 for l in all_leads if l["intent_level"] == "hot")
+    warm_count = sum(1 for l in all_leads if l["intent_level"] == "warm")
+    cold_count = 0  # cold leads are excluded from results
+
+    return jsonify({
+        "niche": niche["label"],
+        "niche_key": niche_key,
+        "location": location,
+        "hashtags_searched": hashtags_used,
+        "max_days_old": max_days_old,
+        "total_reels_found": len(all_reels),
+        "reels_after_date_filter": len(filtered_reels),
+        "reels_scraped": len(reels_scraped_info),
+        "reels_info": reels_scraped_info,
+        "total_leads": len(all_leads),
+        "hot_leads": hot_count,
+        "warm_leads": warm_count,
+        "leads": all_leads,
+    })
+
+
+# ============================================================
 # ROUTES
 # ============================================================
 

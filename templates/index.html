@@ -90,6 +90,7 @@
         <div class="mode-tabs d-flex">
             <button class="mode-tab active" data-mode="discover" onclick="switchMode('discover')"><i class="fas fa-compass me-2"></i>Discover Reels</button>
             <button class="mode-tab" data-mode="direct" onclick="switchMode('direct')"><i class="fas fa-link me-2"></i>Paste Reel URL</button>
+            <button class="mode-tab" data-mode="hunter" onclick="switchMode('hunter')"><i class="fas fa-crosshairs me-2"></i>Lead Hunter</button>
         </div>
 
         <!-- ==================== DISCOVER MODE ==================== -->
@@ -322,8 +323,151 @@
             </div>
         </div>
 
+        <!-- ==================== LEAD HUNTER MODE ==================== -->
+        <div id="hunterMode" class="d-none">
+
+            <!-- Hunter Form -->
+            <div id="hunterForm">
+                <div class="card p-4 mb-4">
+                    <h4 class="fw-bold mb-3"><i class="fas fa-crosshairs me-2" style="color:#bc1888"></i>Lead Hunter</h4>
+                    <p class="text-muted mb-4">Find high-intent leads from Instagram Reels in your niche. The tool discovers relevant reels, auto-scrapes comments, and scores each commenter by intent level.</p>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Niche</label>
+                            <select class="form-select" id="hunterNiche">
+                                <option value="marketing_ai" selected>Marketing & AI Automation</option>
+                                <option value="realestate">Real Estate</option>
+                                <option value="fitness">Fitness & Supplements</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Location</label>
+                            <select class="form-select" id="hunterLocation">
+                                <option value="usa" selected>USA</option>
+                                <option value="global">Global</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Max Days Old</label>
+                            <input type="number" class="form-control" id="hunterDays" value="7" min="1" max="90">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Reels to Scrape</label>
+                            <input type="number" class="form-control" id="hunterReelCount" value="5" min="1" max="10">
+                            <small class="text-muted">Top reels by comment count</small>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Max Comments / Reel</label>
+                            <input type="number" class="form-control" id="hunterMaxComments" value="100" min="10" max="500">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-bold">Instagram Session ID</label>
+                            <input type="password" class="form-control" id="hunterSessionId" placeholder="Paste your sessionid here">
+                        </div>
+                        <div class="col-12">
+                            <button class="btn btn-gradient w-100" id="btnHunt" onclick="startHunt()">
+                                <i class="fas fa-crosshairs me-2"></i>Find High-Intent Leads
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Hunter Loading -->
+            <div class="d-none" id="hunterLoading">
+                <div class="card p-5 text-center">
+                    <div class="spinner-border text-danger mb-3" style="width:3rem;height:3rem" role="status"></div>
+                    <h4 class="fw-bold"><span class="pulse-dot me-2"></span>Hunting Leads</h4>
+                    <p class="text-muted" id="hunterLoadingText">Discovering reels, scraping comments, scoring intent... This takes 30-50 seconds.</p>
+                    <div class="progress mt-3" style="height:8px;max-width:400px;margin:0 auto">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated bg-danger" style="width:100%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Hunter Error -->
+            <div class="d-none" id="hunterError">
+                <div class="card p-4 border-danger">
+                    <div class="d-flex align-items-center text-danger mb-3">
+                        <i class="fas fa-times-circle fs-3 me-3"></i>
+                        <h4 class="fw-bold mb-0">Hunt Failed</h4>
+                    </div>
+                    <div class="alert alert-danger" id="hunterErrorDetails">Something went wrong.</div>
+                    <button class="btn btn-outline-danger" onclick="resetHunter()"><i class="fas fa-arrow-left me-2"></i>Try Again</button>
+                </div>
+            </div>
+
+            <!-- Hunter Results -->
+            <div class="d-none" id="hunterResults">
+                <!-- Stats Summary -->
+                <div class="card p-4 mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                        <h4 class="fw-bold mb-0"><i class="fas fa-bullseye me-2 text-success"></i>Lead Results</h4>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="resetHunter()"><i class="fas fa-redo me-2"></i>New Hunt</button>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6 col-md-3">
+                            <div class="stats-box" style="border-color:#dc3545">
+                                <div class="stats-num text-danger" id="hunterHotCount">0</div>
+                                <div class="stats-label">🔥 Hot Leads</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="stats-box" style="border-color:#ffc107">
+                                <div class="stats-num text-warning" id="hunterWarmCount">0</div>
+                                <div class="stats-label">⚡ Warm Leads</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="stats-box">
+                                <div class="stats-num" id="hunterTotalLeads">0</div>
+                                <div class="stats-label">Total Leads</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="stats-box">
+                                <div class="stats-num" id="hunterReelsScraped">0</div>
+                                <div class="stats-label">Reels Scraped</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-muted small mb-3" id="hunterMeta"></div>
+
+                    <!-- Intent Filter -->
+                    <div class="d-flex gap-2 flex-wrap mb-3">
+                        <button class="btn btn-sm btn-outline-danger active" id="filterAll" onclick="filterHunterLeads('all')">All</button>
+                        <button class="btn btn-sm btn-outline-danger" id="filterHot" onclick="filterHunterLeads('hot')">🔥 Hot Only</button>
+                        <button class="btn btn-sm btn-outline-warning" id="filterWarm" onclick="filterHunterLeads('warm')">⚡ Warm Only</button>
+                    </div>
+
+                    <!-- Download -->
+                    <div class="d-flex gap-2 flex-wrap">
+                        <button class="btn btn-outline-success btn-sm" onclick="downloadHunterCSV('all')"><i class="fas fa-file-csv me-2"></i>All Leads CSV</button>
+                        <button class="btn btn-outline-danger btn-sm" onclick="downloadHunterCSV('hot')"><i class="fas fa-fire me-2"></i>Hot Leads CSV</button>
+                        <button class="btn btn-outline-warning btn-sm" onclick="downloadHunterCSV('warm')"><i class="fas fa-bolt me-2"></i>Warm Leads CSV</button>
+                    </div>
+                </div>
+
+                <!-- Reels Scraped Info -->
+                <div class="card p-4 mb-4">
+                    <h6 class="fw-bold mb-3"><i class="fas fa-film me-2"></i>Reels Scraped</h6>
+                    <div id="hunterReelsList"></div>
+                </div>
+
+                <!-- Leads Table -->
+                <div class="card p-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="fw-bold mb-0"><i class="fas fa-users me-2"></i>Leads</h6>
+                        <span class="badge bg-dark rounded-pill" id="hunterLeadsBadge">0 leads</span>
+                    </div>
+                    <div class="comments-scroll" id="hunterLeadsContainer"></div>
+                </div>
+            </div>
+        </div>
+
         <footer class="text-center py-4 text-muted mt-5 border-top">
-            <p class="mb-0">Built with <i class="fas fa-heart text-danger"></i> for Sai Sankeerth &bull; v4.0 Discover &bull; Powered by GraphQL and Flask</p>
+            <p class="mb-0">Built with <i class="fas fa-heart text-danger"></i> for Sai Sankeerth &bull; v5.0 Lead Hunter &bull; Powered by GraphQL and Flask</p>
         </footer>
     </div>
 
@@ -347,6 +491,7 @@
             document.querySelector('[data-mode="' + mode + '"]').classList.add('active');
             document.getElementById('discoverMode').classList.toggle('d-none', mode !== 'discover');
             document.getElementById('directMode').classList.toggle('d-none', mode !== 'direct');
+            document.getElementById('hunterMode').classList.toggle('d-none', mode !== 'hunter');
         }
 
         // ==================== CATEGORIES ====================
@@ -864,6 +1009,154 @@
         function escapeHtml(str) {
             if (!str) return '';
             return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");
+        }
+
+        // ==================== LEAD HUNTER ====================
+        var HUNTER_LEADS = [];
+        var HUNTER_FILTER = 'all';
+
+        function startHunt() {
+            var niche = document.getElementById('hunterNiche').value;
+            var location = document.getElementById('hunterLocation').value;
+            var days = document.getElementById('hunterDays').value;
+            var reelCount = document.getElementById('hunterReelCount').value;
+            var maxComments = document.getElementById('hunterMaxComments').value;
+            var sessionid = document.getElementById('hunterSessionId').value.trim();
+
+            if (!sessionid) { showHunterError('Please enter your Instagram session ID.'); return; }
+
+            document.getElementById('btnHunt').disabled = true;
+            document.getElementById('btnHunt').innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Hunting...';
+            document.getElementById('hunterForm').classList.add('d-none');
+            document.getElementById('hunterLoading').classList.remove('d-none');
+            document.getElementById('hunterError').classList.add('d-none');
+            document.getElementById('hunterResults').classList.add('d-none');
+
+            fetch('/api/lead_hunter', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    niche: niche,
+                    location: location,
+                    max_days_old: parseInt(days),
+                    top_reels_to_scrape: parseInt(reelCount),
+                    max_comments_per_reel: parseInt(maxComments),
+                    sessionid: sessionid
+                })
+            })
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                if (data.error) { showHunterError(data.error); return; }
+                if (data.message && (!data.leads || data.leads.length === 0)) { showHunterError(data.message); return; }
+                showHunterResults(data);
+            })
+            .catch(function() { showHunterError('Server took too long. Try fewer reels or fewer comments per reel.'); });
+        }
+
+        function showHunterResults(data) {
+            HUNTER_LEADS = data.leads || [];
+            document.getElementById('hunterLoading').classList.add('d-none');
+            document.getElementById('hunterResults').classList.remove('d-none');
+            document.getElementById('btnHunt').disabled = false;
+            document.getElementById('btnHunt').innerHTML = '<i class="fas fa-crosshairs me-2"></i>Find High-Intent Leads';
+
+            document.getElementById('hunterHotCount').innerText = data.hot_leads || 0;
+            document.getElementById('hunterWarmCount').innerText = data.warm_leads || 0;
+            document.getElementById('hunterTotalLeads').innerText = data.total_leads || 0;
+            document.getElementById('hunterReelsScraped').innerText = data.reels_scraped || 0;
+
+            var metaText = 'Niche: ' + (data.niche || '') + ' | Location: ' + (data.location || '') + ' | Hashtags: ' + (data.hashtags_searched || []).join(', ') + ' | Reels found: ' + (data.total_reels_found || 0) + ' | After date filter: ' + (data.reels_after_date_filter || 0);
+            document.getElementById('hunterMeta').innerText = metaText;
+
+            // Render reels info
+            var reelsHtml = '';
+            (data.reels_info || []).forEach(function(r, i) {
+                reelsHtml += '<div class="d-flex justify-content-between align-items-center py-2 border-bottom">' +
+                    '<div><a href="' + r.reel_url + '" target="_blank" class="fw-bold text-decoration-none">@' + escapeHtml(r.username) + '</a>' +
+                    ' <small class="text-muted">' + (r.days_old != null ? r.days_old.toFixed(1) + ' days old' : '') + '</small>' +
+                    '<div class="small text-muted">' + escapeHtml((r.caption || '').substring(0, 80)) + '</div></div>' +
+                    '<div class="text-end"><span class="badge bg-primary">' + r.comments_scraped + ' scraped</span> <span class="badge bg-secondary">' + r.comment_count_on_reel + ' total</span></div>' +
+                '</div>';
+            });
+            document.getElementById('hunterReelsList').innerHTML = reelsHtml;
+
+            renderHunterLeads();
+        }
+
+        function renderHunterLeads() {
+            var filtered = HUNTER_FILTER === 'all' ? HUNTER_LEADS : HUNTER_LEADS.filter(function(l) { return l.intent_level === HUNTER_FILTER; });
+            document.getElementById('hunterLeadsBadge').innerText = filtered.length + ' leads';
+
+            var html = '';
+            if (filtered.length === 0) {
+                html = '<div class="text-center text-muted py-4">No leads in this category.</div>';
+            } else {
+                filtered.forEach(function(l, i) {
+                    var intentBadge = l.intent_level === 'hot'
+                        ? '<span class="badge bg-danger">🔥 HOT</span>'
+                        : '<span class="badge bg-warning text-dark">⚡ WARM</span>';
+                    var verifiedIcon = l.is_verified ? ' <i class="fas fa-check-circle text-primary" title="Verified"></i>' : '';
+                    html += '<div class="d-flex align-items-start gap-2 py-2 border-bottom">' +
+                        '<div class="flex-grow-1">' +
+                            '<div class="d-flex align-items-center gap-2 mb-1">' +
+                                '<a href="' + l.profile_url + '" target="_blank" class="fw-bold text-decoration-none">@' + escapeHtml(l.username) + '</a>' + verifiedIcon +
+                                ' ' + intentBadge +
+                                ' <small class="text-muted">' + escapeHtml(l.full_name) + '</small>' +
+                            '</div>' +
+                            '<div class="small">"' + escapeHtml(l.comment_text) + '"</div>' +
+                            '<div class="small text-muted mt-1">From <a href="' + l.reel_source + '" target="_blank" class="text-decoration-none">@' + escapeHtml(l.reel_creator) + '</a> reel' +
+                                (l.comment_likes > 0 ? ' &bull; ' + l.comment_likes + ' likes' : '') + '</div>' +
+                        '</div>' +
+                    '</div>';
+                });
+            }
+            document.getElementById('hunterLeadsContainer').innerHTML = html;
+        }
+
+        function filterHunterLeads(level) {
+            HUNTER_FILTER = level;
+            document.getElementById('filterAll').classList.remove('active');
+            document.getElementById('filterHot').classList.remove('active');
+            document.getElementById('filterWarm').classList.remove('active');
+            var btnId = level === 'all' ? 'filterAll' : (level === 'hot' ? 'filterHot' : 'filterWarm');
+            document.getElementById(btnId).classList.add('active');
+            renderHunterLeads();
+        }
+
+        function downloadHunterCSV(scope) {
+            var leads = scope === 'all' ? HUNTER_LEADS : HUNTER_LEADS.filter(function(l) { return l.intent_level === scope; });
+            if (leads.length === 0) { alert('No leads to download.'); return; }
+            var rows = [['username','full_name','profile_url','intent_level','comment_text','reel_source','reel_creator','comment_likes','comment_created_at','is_verified']];
+            leads.forEach(function(l) {
+                rows.push([l.username, l.full_name, l.profile_url, l.intent_level, l.comment_text, l.reel_source, l.reel_creator, l.comment_likes || 0, l.comment_created_at || '', l.is_verified ? 'Yes' : 'No']);
+            });
+            var csv = rows.map(function(r) {
+                return r.map(function(cell) {
+                    var s = String(cell == null ? '' : cell);
+                    return s.includes(',') || s.includes('"') || s.includes('\n') ? '"' + s.replace(/"/g, '""') + '"' : s;
+                }).join(',');
+            }).join('\n');
+            var blob = new Blob([csv], { type: 'text/csv' });
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a'); a.href = url; a.download = 'hunter_leads_' + scope + '.csv';
+            document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+        }
+
+        function showHunterError(msg) {
+            document.getElementById('hunterLoading').classList.add('d-none');
+            document.getElementById('hunterErrorDetails').innerText = msg;
+            document.getElementById('hunterError').classList.remove('d-none');
+            document.getElementById('btnHunt').disabled = false;
+            document.getElementById('btnHunt').innerHTML = '<i class="fas fa-crosshairs me-2"></i>Find High-Intent Leads';
+        }
+
+        function resetHunter() {
+            document.getElementById('hunterForm').classList.remove('d-none');
+            document.getElementById('hunterLoading').classList.add('d-none');
+            document.getElementById('hunterError').classList.add('d-none');
+            document.getElementById('hunterResults').classList.add('d-none');
+            HUNTER_LEADS = [];
+            HUNTER_FILTER = 'all';
         }
     </script>
 </body>
