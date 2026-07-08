@@ -774,7 +774,6 @@ def extract_us_phone_numbers(text):
     if not text:
         return []
 
-    # US phone regex — matches common formats
     phone_regex = re.compile(
         r'(?:\+?1[\s.-]?)?'           # optional country code +1
         r'(?:\(\d{3}\)|\d{3})'        # area code: (123) or 123
@@ -785,12 +784,10 @@ def extract_us_phone_numbers(text):
     )
 
     matches = phone_regex.findall(text)
-    # Filter: must be 10+ digits (avoid matching short numbers like years "2024")
     valid = []
     for m in matches:
         digits = re.sub(r'\D', '', m)
-        # US numbers are 10 digits (or 11 with leading 1)
-        if len(digits) == 10 and digits[0] in '23456789':  # area code can't start with 0/1
+        if len(digits) == 10 and digits[0] in '23456789':
             valid.append(f"({digits[:3]}) {digits[3:6]}-{digits[6:]}")
         elif len(digits) == 11 and digits[0] == '1':
             d = digits[1:]
@@ -799,19 +796,55 @@ def extract_us_phone_numbers(text):
     return valid
 
 
+def extract_emails(text):
+    """Extract email addresses from a comment."""
+    if not text:
+        return []
+    email_regex = re.compile(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}')
+    return email_regex.findall(text)
+
+
+def extract_contact_info(text):
+    """
+    Extract all contact info from a comment: phone numbers, emails, and DM requests.
+    Returns (phone_numbers, emails, has_dm_request).
+    """
+    phones = extract_us_phone_numbers(text)
+    emails = extract_emails(text)
+
+    text_lower = text.lower()
+    dm_signals = [
+        "dm me", "dm you", "dm u", "dmed you", "i'll dm", "ill dm",
+        "check your dm", "check ur dm", "check my dm", "check dm",
+        "message me", "msg me", "inbox me", "pm me",
+        "i'll message you", "ill message you",
+    ]
+    has_dm = any(sig in text_lower for sig in dm_signals)
+
+    return phones, emails, has_dm
+
+
 def score_comment_intent(text, niche_key):
     """
-    Score a comment's intent level based on whether it contains a US phone number
-    AND business-need keywords. Phone number presence = strong buying signal.
+    Hybrid intent scoring:
+    - Contact info (phone/email/DM request) = strong buying signal
+    - Business-need keywords = intent signal
+    - Either one qualifies a comment as a lead.
+    Returns (intent_level, intent_score, contact_info_dict).
     """
     if not text:
-        return ("cold", 0, [])
+        return ("cold", 0, {})
     text_lower = text.lower().strip()
     text_clean = re.sub(r'[^\w\s]', '', text_lower)
 
-    # Extract phone numbers — this is the primary signal
-    phone_numbers = extract_us_phone_numbers(text)
-    has_phone = len(phone_numbers) > 0
+    # Extract all contact info
+    phones, emails, has_dm = extract_contact_info(text)
+    contact_info = {
+        "phone_numbers": phones,
+        "emails": emails,
+        "dm_requested": has_dm,
+    }
+    has_contact = len(phones) > 0 or len(emails) > 0 or has_dm
 
     niche = LEAD_HUNTER_NICHES.get(niche_key, {})
     intent_kw = niche.get("intent_keywords", {})
@@ -822,14 +855,14 @@ def score_comment_intent(text, niche_key):
     spam_patterns = niche.get("spam_patterns", [])
     universal_spam = [
         "erase", "check my profile", "check my page", "check us out",
-        "dm for shoutout", "follow for follow", "f4f", "link in bio",
-        "check my bio", "visit my bio", "promotion", "collab?",
-        "collab opportunity", "gain train", "follow chain",
+        "dm for shoutout", "follow for follow", "f4f",
+        "promotion", "collab?", "collab opportunity",
+        "gain train", "follow chain",
     ]
     all_spam = spam_patterns + universal_spam
     for pattern in all_spam:
         if pattern in text_lower:
-            return ("cold", 0, [])
+            return ("cold", 0, contact_info)
 
     # Keyword matching
     hot_match = sum(1 for kw in hot_kw if kw in text_lower or kw in text_clean)
@@ -839,33 +872,32 @@ def score_comment_intent(text, niche_key):
 
     # Pure emoji / very short = cold
     if len(text_clean) <= 2 and not any(c.isalpha() for c in text_clean):
-        return ("cold", 0, phone_numbers)
+        return ("cold", 0, contact_info)
+    # Single-word comments = cold (no real intent expressed)
+    if len(words) <= 1:
+        return ("cold", 0, contact_info)
 
-    # --- PRIMARY SIGNAL: Phone number in comment ---
-    if has_phone:
-        # Phone + business keywords = HOT (score 3)
-        if hot_match >= 1:
-            return ("hot", 3, phone_numbers)
-        # Phone + warm keywords = HOT (score 2)
-        if warm_match >= 1:
-            return ("hot", 2, phone_numbers)
-        # Phone alone but comment is a real sentence (3+ words) = HOT (score 2)
-        # Someone leaving their number on a marketing reel IS intent
-        if len(words) >= 2:
-            return ("hot", 2, phone_numbers)
-        # Phone number alone, single word = WARM (might be spam/random)
-        return ("warm", 1, phone_numbers)
+    # --- SCORING: Contact info + Keywords combination ---
+    # Contact info + hot keywords = HOT (score 3) — strongest possible signal
+    if has_contact and hot_match >= 1:
+        return ("hot", 3, contact_info)
+    # Contact info + warm keywords = HOT (score 2)
+    if has_contact and warm_match >= 1:
+        return ("hot", 2, contact_info)
+    # Contact info alone = HOT (score 2) — they're asking to be contacted
+    if has_contact:
+        return ("hot", 2, contact_info)
 
-    # --- SECONDARY SIGNAL: Keywords only, no phone ---
+    # --- Keywords only, no contact info ---
     if hot_match >= 2:
-        return ("hot", 3, phone_numbers)
+        return ("hot", 3, contact_info)
     elif hot_match == 1:
-        return ("hot", 2, phone_numbers)
+        return ("hot", 2, contact_info)
     elif warm_match >= 2:
-        return ("warm", 1, phone_numbers)
+        return ("warm", 1, contact_info)
     elif warm_match == 1:
-        return ("warm", 1, phone_numbers)
-    return ("cold", 0, phone_numbers)
+        return ("warm", 1, contact_info)
+    return ("cold", 0, contact_info)
 
 
 @app.route("/api/lead_hunter", methods=["POST"])
@@ -986,10 +1018,10 @@ def lead_hunter():
         for comment in result["comments"]:
             username = comment["commenter"]["username"]
             text = comment["text"]
-            intent_level, intent_score, phone_numbers = score_comment_intent(text, niche_key)
+            intent_level, intent_score, contact_info = score_comment_intent(text, niche_key)
 
-            # Only keep leads with a phone number — that's our hard filter
-            if not phone_numbers:
+            # Skip cold comments with zero engagement value
+            if intent_level == "cold" and intent_score == 0:
                 continue
 
             # Dedup by username — keep the highest intent comment
@@ -1000,7 +1032,9 @@ def lead_hunter():
                     existing["comment_text"] = text
                     existing["intent_level"] = intent_level
                     existing["intent_score"] = intent_score
-                    existing["phone_numbers"] = phone_numbers
+                    existing["phone_numbers"] = contact_info.get("phone_numbers", [])
+                    existing["emails"] = contact_info.get("emails", [])
+                    existing["dm_requested"] = contact_info.get("dm_requested", False)
                     existing["reel_source"] = reel.get("reel_url", "")
                     existing["reel_creator"] = reel.get("username", "")
                 continue
@@ -1015,7 +1049,9 @@ def lead_hunter():
                 "is_private": commenter.get("is_private", False),
                 "profile_url": f"https://www.instagram.com/{username}/",
                 "comment_text": text,
-                "phone_numbers": phone_numbers,
+                "phone_numbers": contact_info.get("phone_numbers", []),
+                "emails": contact_info.get("emails", []),
+                "dm_requested": contact_info.get("dm_requested", False),
                 "intent_level": intent_level,
                 "intent_score": intent_score,
                 "reel_source": reel.get("reel_url", ""),

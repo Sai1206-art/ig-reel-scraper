@@ -1104,7 +1104,9 @@
                                 ' <small class="text-muted">' + escapeHtml(l.full_name) + '</small>' +
                             '</div>' +
                             '<div class="small">"' + escapeHtml(l.comment_text) + '"</div>' +
-                            '<div class="small fw-bold text-success mt-1"><i class="fas fa-phone me-1"></i>' + (l.phone_numbers || []).join(', ') + '</div>' +
+                            (l.phone_numbers && l.phone_numbers.length > 0 ? '<div class="small fw-bold text-success mt-1"><i class="fas fa-phone me-1"></i>' + l.phone_numbers.join(', ') + '</div>' : '') +
+                            (l.emails && l.emails.length > 0 ? '<div class="small fw-bold text-primary mt-1"><i class="fas fa-envelope me-1"></i>' + l.emails.join(', ') + '</div>' : '') +
+                            (l.dm_requested ? '<div class="small fw-bold text-warning mt-1"><i class="fas fa-comment-dots me-1"></i>DM requested</div>' : '') +
                             '<div class="small text-muted mt-1">From <a href="' + l.reel_source + '" target="_blank" class="text-decoration-none">@' + escapeHtml(l.reel_creator) + '</a> reel' +
                                 (l.comment_likes > 0 ? ' &bull; ' + l.comment_likes + ' likes' : '') + '</div>' +
                         '</div>' +
@@ -1127,9 +1129,9 @@
         function downloadHunterCSV(scope) {
             var leads = scope === 'all' ? HUNTER_LEADS : HUNTER_LEADS.filter(function(l) { return l.intent_level === scope; });
             if (leads.length === 0) { alert('No leads to download.'); return; }
-            var rows = [['username','full_name','phone_numbers','profile_url','intent_level','comment_text','reel_source','reel_creator','comment_likes','comment_created_at','is_verified']];
+            var rows = [['username','full_name','phone_numbers','emails','dm_requested','profile_url','intent_level','comment_text','reel_source','reel_creator','comment_likes','comment_created_at','is_verified']];
             leads.forEach(function(l) {
-                rows.push([l.username, l.full_name, (l.phone_numbers || []).join('; '), l.profile_url, l.intent_level, l.comment_text, l.reel_source, l.reel_creator, l.comment_likes || 0, l.comment_created_at || '', l.is_verified ? 'Yes' : 'No']);
+                rows.push([l.username, l.full_name, (l.phone_numbers || []).join('; '), (l.emails || []).join('; '), l.dm_requested ? 'Yes' : 'No', l.profile_url, l.intent_level, l.comment_text, l.reel_source, l.reel_creator, l.comment_likes || 0, l.comment_created_at || '', l.is_verified ? 'Yes' : 'No']);
             });
             var csv = rows.map(function(r) {
                 return r.map(function(cell) {
